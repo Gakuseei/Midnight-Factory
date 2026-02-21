@@ -1004,7 +1004,7 @@ function tick(now) {
                 var _demandStr='';
                 if (hb.sellerFilter&&state.demandWindow[hb.sellerFilter]!==undefined) {
                     var _dm=state.demandWindow[hb.sellerFilter];
-                    _demandStr=' \u2014 Demand: '+(_dm>=1?'High':_dm>=0.9?'Normal':_dm>=0.8?'Low':'Saturated');
+                    _demandStr=' \u2014 Demand: '+(_dm>=0.9?'High':_dm>=0.7?'Normal':_dm>=0.5?'Low':'Saturated')+' ('+Math.round(_dm*100)+'%)';
                 }
                 hoverData = "Sold: $"+hb.totalSold+_demandStr;
             } else if (hb.type==="ore_synthesizer") {
@@ -1049,6 +1049,7 @@ function tick(now) {
         stats[_ht] = (stats[_ht]||0) + _shVals[_si2];
         itemCounts[_ht] = (itemCounts[_ht]||0) + 1;
     }
+    var _demandMap = itemCounts;
 
     for (const m of Config.MILESTONES) {
         if (firedMilestones.has(m.id)) continue;
@@ -1058,8 +1059,8 @@ function tick(now) {
         if (hit) {
             firedMilestones.add(m.id);
             var _rw='';
-            if (m.rewardMoney) { state.money+=m.rewardMoney; _rw=' (+$'+m.rewardMoney+')'; }
-            if (m.rewardRP) { state.rp+=m.rewardRP; _rw=' (+'+m.rewardRP+' RP)'; }
+            if (m.rewardMoney) { state.money+=m.rewardMoney; _rw+=' (+$'+m.rewardMoney+')'; }
+            if (m.rewardRP) { state.rp+=m.rewardRP; _rw+=' (+'+m.rewardRP+' RP)'; }
             postMessage({type:'milestone',text:m.text+_rw});
         }
     }
@@ -1189,12 +1190,8 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('gold_refining')&&it.type==='gold_ingot') val*=1.25;
                         if (state.unlockedTechs.has('nebula_resonance')&&it.type==='plasma_coil') val*=1.5;
                         if (state.unlockedTechs.has('sing_prestige_1')) val*=1.15;
-                        var _demandCnt=0, _demandCutoff=_nowRT-60000;
-                        for (var _di=0;_di<_shLen;_di++) {
-                            var _dIdx=(_shHead+_di)%_SH_CAP;
-                            if (_shTimes[_dIdx]>=_demandCutoff&&_shTypes[_dIdx]===it.type) _demandCnt++;
-                        }
-                        var _demandMult=_demandCnt>100?0.7:_demandCnt>50?0.8:_demandCnt>10?0.9:1.0;
+                        var _demandCnt=_demandMap[it.type]||0;
+                        var _demandMult=Math.max(0.3, 1.0/(1.0+_demandCnt*0.005));
                         val*=_demandMult;
                         state.demandWindow[it.type]=_demandMult;
                         val=Math.round(val);
@@ -1641,7 +1638,7 @@ const Config = {
             {in:{alloy:1,nano_chip:1},out:"energy_cell",time:8000},
             {in:{processor:2,crystal:5},out:"quantum_core",time:10000},
             {in:{brick:2,refined_coal:1},out:"composite",time:4000},
-            {in:{composite:2},out:"alloy",time:2000},
+            {in:{refined_coal:2,brick:1},out:"alloy",time:2000},
             {in:{titanium_bar:2,steel:1},out:"titan_alloy",time:5000},
             {in:{nebula_crystal:1,energy_cell:1},out:"plasma_coil",time:7000},
             {in:{quantum_core:1,titan_alloy:2},out:"quantum_lattice",time:8000}
