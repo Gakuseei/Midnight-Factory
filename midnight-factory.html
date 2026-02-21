@@ -385,6 +385,14 @@ kbd.shortcut-key {
     <button id="ascendant-continue-btn" style="padding:10px 28px;border-radius:12px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.5);color:#d4af37;font-family:Quicksand,sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Keep Building &rarr;</button>
   </div>
 </div>
+<div id="transcendent-screen" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,10,16,0.93);backdrop-filter:blur(20px);flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <div style="font-family:Quicksand,sans-serif;font-size:46px;font-weight:700;color:#c87adf;text-shadow:0 0 40px rgba(200,122,223,0.9);letter-spacing:2px;">TRANSCENDENT FACTORY</div>
+  <div id="transcendent-count" style="font-family:'Fira Code',monospace;font-size:20px;color:#f0e0ff;margin-top:4px;text-align:center;"></div>
+  <div style="font-size:17px;color:#a4b5d0;max-width:420px;text-align:center;line-height:1.8;">Beyond quantum, beyond singularity.<br>The factory transcends reality itself.</div>
+  <div style="display:flex;gap:16px;margin-top:12px;">
+    <button id="transcendent-continue-btn" style="padding:10px 28px;border-radius:12px;background:rgba(200,122,223,0.15);border:1px solid rgba(200,122,223,0.5);color:#c87adf;font-family:Quicksand,sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Keep Building &rarr;</button>
+  </div>
+</div>
 <div id="building-info-panel" class="panel" style="display:none;position:absolute;z-index:200;min-width:180px;max-width:240px;pointer-events:auto;"></div>
 <div id="recipe-book-overlay">
   <div class="rb-header">
@@ -426,6 +434,7 @@ let undoStack = [];
 let firedMilestones = new Set();
 let statTotals = {};
 var _quantumCoreCount = 0;
+var _singularityCount = 0;
 let passHistoryMap = new Map();
 const _arrivedAtMap = new Map();
 const _arrivedArrayPool = []; // pool of reusable arrays — avoids per-tick allocation
@@ -573,7 +582,7 @@ function emitSave() {
     }
     var _saveObj = { money:state.money, rp:state.rp,
         sparseBuildings:sparseBuildings, unlockedTechs:Array.from(state.unlockedTechs), oreData:oreData,
-        firedMilestones:Array.from(firedMilestones), quantumCoreCount:_quantumCoreCount,
+        firedMilestones:Array.from(firedMilestones), quantumCoreCount:_quantumCoreCount, singularityCount:_singularityCount,
         lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems, statTotals:statTotals };
     postMessage({ type:'save_game', data:_saveObj, json:JSON.stringify(_saveObj) });
 }
@@ -588,6 +597,7 @@ self.onmessage = function(e) {
                 state.unlockedTechs = new Set(msg.save.unlockedTechs || []);
                 if (msg.save.firedMilestones) for (const m of msg.save.firedMilestones) firedMilestones.add(m);
                 if (msg.save.quantumCoreCount) _quantumCoreCount = msg.save.quantumCoreCount;
+                if (msg.save.singularityCount) _singularityCount = msg.save.singularityCount;
                 if (msg.save.lifetimeSold !== undefined) state.lifetimeSold = msg.save.lifetimeSold;
                 if (msg.save.lifetimeItems !== undefined) state.lifetimeItems = msg.save.lifetimeItems;
                 if (msg.save.statTotals) { for (var _stk in msg.save.statTotals) statTotals[_stk] = msg.save.statTotals[_stk]; }
@@ -937,7 +947,7 @@ function tick(now) {
             _pib[_pbb]=_pit.x; _pib[_pbb+1]=_pit.y; _pib[_pbb+2]=_pit.tx; _pib[_pbb+3]=_pit.ty;
             _pib[_pbb+4]=_pit.progress; _pib[_pbb+5]=_rKeyIdx[_pit.type]||0; _pib[_pbb+6]=_pit.lane||0;
         }
-        postMessage({ type:'tick', itemsBuf:_pib.buffer, itemCount:_pic, money:state.money, rp:state.rp, hoverData:_pauseHover, stats:{}, itemCounts:{}, oreProgress:{}, buildingStats:undefined, quantumCoreCount:_quantumCoreCount, lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems }, [_pib.buffer]);
+        postMessage({ type:'tick', itemsBuf:_pib.buffer, itemCount:_pic, money:state.money, rp:state.rp, hoverData:_pauseHover, stats:{}, itemCounts:{}, oreProgress:{}, buildingStats:undefined, quantumCoreCount:_quantumCoreCount, singularityCount:_singularityCount, lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems }, [_pib.buffer]);
         return;
     }
     var dt = Math.min((now - lastTick) * speedMult, 100);
@@ -1046,6 +1056,18 @@ function tick(now) {
         firedMilestones.add('prestige_4');
         postMessage({type:'milestone',text:'ASCENDANT',sfx:'quantum_core',qc:_quantumCoreCount});
     }
+    if (_singularityCount>=1&&!firedMilestones.has('sing_prestige_1')) {
+        firedMilestones.add('sing_prestige_1'); state.unlockedTechs.add('sing_prestige_1');
+        postMessage({type:'milestone',text:'Singularity Prestige I \u2014 All sell values +25%.',sfx:'quantum_core'});
+    }
+    if (_singularityCount>=5&&!firedMilestones.has('sing_prestige_2')) {
+        firedMilestones.add('sing_prestige_2'); state.unlockedTechs.add('sing_prestige_2');
+        postMessage({type:'milestone',text:'Singularity Prestige II \u2014 Synthesizer +20% speed.',sfx:'quantum_core'});
+    }
+    if (_singularityCount>=10&&!firedMilestones.has('sing_prestige_3')) {
+        firedMilestones.add('sing_prestige_3');
+        postMessage({type:'milestone',text:'TRANSCENDENT FACTORY',sfx:'quantum_core',singCount:_singularityCount});
+    }
     _tickN++;
     const oreProgress = {};
     // buildingStats only every 4 ticks — cuts serialisation cost by 75%
@@ -1079,7 +1101,7 @@ function tick(now) {
         _ib[_bb+4]=_it.progress; _ib[_bb+5]=_rKeyIdx[_it.type]||0; _ib[_bb+6]=_it.lane||0;
     }
     var _stSnap = (_tickN % 4 === 0) ? statTotals : undefined;
-    postMessage({ type:'tick', itemsBuf:_ib.buffer, itemCount:_ic, money:state.money, rp:state.rp, hoverData, stats, itemCounts, oreProgress, buildingStats, statTotals:_stSnap, quantumCoreCount:_quantumCoreCount, lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems }, [_ib.buffer]);
+    postMessage({ type:'tick', itemsBuf:_ib.buffer, itemCount:_ic, money:state.money, rp:state.rp, hoverData, stats, itemCounts, oreProgress, buildingStats, statTotals:_stSnap, quantumCoreCount:_quantumCoreCount, singularityCount:_singularityCount, lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems }, [_ib.buffer]);
 
     if (now - lastSaveTime > 5000) { emitSave(); lastSaveTime = now; }
 }
@@ -1129,6 +1151,7 @@ function updateSimulation(dt) {
                             continue;
                         }
                         if (it.type==='quantum_core') _quantumCoreCount++;
+                        if (it.type==='singularity_shard') _singularityCount++;
                         let val = Config.RESOURCES[it.type]?.value||1;
                         if (state.unlockedTechs.has('prestige_1')) val*=1.15;
                         if (state.unlockedTechs.has('bulk_trade')) val*=1.3;
@@ -1137,6 +1160,8 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('rp_trade_2')) val*=1.1;
                         if (state.unlockedTechs.has('research_grant')) val*=1.08;
                         if (state.unlockedTechs.has('gold_refining')&&it.type==='gold_ingot') val*=1.25;
+                        if (state.unlockedTechs.has('nebula_resonance')&&it.type==='nebula_crystal') val*=1.5;
+                        if (state.unlockedTechs.has('sing_prestige_1')) val*=1.25;
                         val=Math.round(val);
                         state.money+=val; b.totalSold+=val;
                         state.lifetimeSold+=val; state.lifetimeItems++;
@@ -1151,6 +1176,7 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('lab_boost')) val*=2;
                         if (state.unlockedTechs.has('lab_speed')) val*=1.5;
                         if (state.unlockedTechs.has('prestige_3')) val*=3;
+                        if (state.unlockedTechs.has('nebula_resonance')&&it.type==='singularity_shard') val*=2;
                         if (val>0) { state.rp+=val; postMessage({type:'rp_gain',x:it.tx,y:it.ty,val:val}); }
                         state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
@@ -1399,6 +1425,8 @@ function processRecipe(b, machineType, dt) {
     if (state.unlockedTechs.has('mass_production')) timeScale*=0.75;
     if (machineType==='assembler'&&state.unlockedTechs.has('alloy_mastery')) timeScale*=0.8;
     if (machineType==='assembler'&&state.unlockedTechs.has('prestige_2')) timeScale*=0.9;
+    if (machineType==='synthesizer'&&state.unlockedTechs.has('synthesis_mastery')) timeScale*=0.7;
+    if (machineType==='synthesizer'&&state.unlockedTechs.has('sing_prestige_2')) timeScale*=0.8;
     let started=false;
     // If a recipe is locked, only try that one; otherwise iterate all in order
     const recipes = ((machineType==='assembler'||machineType==='synthesizer') && b._lockedRecipeRef)
@@ -1411,6 +1439,7 @@ function processRecipe(b, machineType, dt) {
             for (var _rk2 in r.in) b.inventory[_rk2]-=r.in[_rk2];
             let rts=timeScale;
             if (machineType==='furnace'&&r.out==='gold_ingot'&&state.unlockedTechs.has('gold_refining')) rts*=0.5;
+            if (machineType==='furnace'&&r.out==='titanium_bar'&&state.unlockedTechs.has('titan_smelting')) rts*=0.6;
             if (machineType==='assembler'&&r.out==='energy_cell'&&state.unlockedTechs.has('energy_mastery')) rts*=0.65;
             b.crafting=r.out; b.craftTime=r.time*rts; b.timer=0; b.idleTimer=0; started=true; break;
         }
@@ -3961,7 +3990,7 @@ class Game {
         this._prevSellerTotals = {};
         this._prevSellTotal = 0;
         this._lastQuantumAssemblerPos = null;
-        this.state={map:[],buildings:[],itemsBuf:null,itemCount:0,money:200,rp:0,quantumCoreCount:0};
+        this.state={map:[],buildings:[],itemsBuf:null,itemCount:0,money:200,rp:0,quantumCoreCount:0,singularityCount:0};
         this.uiState={hoverTile:null,selectedTool:null,rotation:1,skillTreeOpen:false,placeFailTile:null};
         this.spawnX=null; this.spawnY=null;
 
@@ -4032,6 +4061,7 @@ class Game {
                 if (msg.lifetimeItems!==undefined) this.state.lifetimeItems=msg.lifetimeItems;
                 if (msg.statTotals) this.state.statTotals=msg.statTotals;
                 this.state.quantumCoreCount=msg.quantumCoreCount||0;
+                this.state.singularityCount=msg.singularityCount||0;
                 this.uiState.hoverData=msg.hoverData;
                 // Throttle full DOM stats update to every 3rd tick; money/rp numbers every tick
                 this._tickCount = (this._tickCount||0) + 1;
@@ -4208,6 +4238,11 @@ class Game {
                         || msg.text.includes('Quantum Factory') || msg.text.includes('Transcendence') || msg.text.includes('Singularity Loop')) {
                         this.showMilestoneFlash();
                     }
+                }
+                if (msg.text==='TRANSCENDENT FACTORY') {
+                    this.showToast('Beyond singularity. The factory transcends.', 'gold', 5000);
+                    this.showMilestoneFlash();
+                    setTimeout(()=>this.showTranscendentScreen(msg.singCount||10),1800);
                 }
                 if (msg.text.includes('transcended')) setTimeout(()=>this.showEndScreen(),1800);
             } else if (msg.type==='rp_gain') {
@@ -4720,6 +4755,16 @@ class Game {
         if (countEl) countEl.textContent=qc+' Quantum Cores produced';
         document.getElementById('ascendant-continue-btn').onclick=function(){sc.style.display='none';};
     }
+    showTranscendentScreen(count) {
+        if (this._transcShown) return;
+        this._transcShown=true;
+        const sc=document.getElementById('transcendent-screen');
+        if (!sc) return;
+        sc.style.display='flex';
+        var countEl=document.getElementById('transcendent-count');
+        if (countEl) countEl.textContent=count+' Singularity Shards produced';
+        document.getElementById('transcendent-continue-btn').onclick=function(){sc.style.display='none';};
+    }
     showEndScreen() {
         if (this._endShown) return;
         this._endShown=true;
@@ -4728,6 +4773,7 @@ class Game {
         document.getElementById('end-stats').innerHTML=
             'Credits: <span style="color:var(--gold)">$'+fmtNum(this.state.money)+'</span><br>'+
             'Research: <span style="color:var(--research)">'+fmtNum(this.state.rp)+' RP</span><br>'+
+            'Singularity Shards: <span style="color:#c87adf">'+(this.state.singularityCount||0)+'</span><br>'+
             'Buildings placed: <span style="color:#e2e8f0">'+(this._totalPlaced||0)+'</span>';
         document.getElementById('end-continue-btn').onclick=()=>{sc.style.display='none';};
         document.getElementById('end-new-btn').onclick=()=>{localStorage.removeItem('mf_seed');location.reload();};
