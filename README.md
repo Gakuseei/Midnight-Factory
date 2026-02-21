@@ -39,27 +39,32 @@ A chill, browser-based factory game built entirely in a **single HTML file**. Pl
 ### The Production Chain
 
 ```
-                        Ore Deposits
-                    iron  copper  coal  stone
-                        |     |     |     |
-                        v     v     v     v
-                      [ Mine ] -----> [ Belt ] -----> [ Furnace ]
-                                                          |
-                        iron_bar  copper_bar  brick  refined_coal
-                                    |
-                                    v
-                              [ Assembler ]
-                                    |
-                    steel  copper_wire  alloy  circuit
-                                    |
-                                    v
-                        nano_chip  processor  energy_cell
-                                    |
-                                    v
-                            [ Quantum Core ]
-                                    |
-                                    v
-                          [ Singularity Shard ]
+                           Ore Deposits
+          ┌────────────────────────────────────────┐
+          │  iron  copper  coal  stone              │
+          │  gold  crystal  silicon       (tier 3)  │
+          │  titanium  nebula dust        (tier 5)  │
+          └──────────────┬─────────────────────────┘
+                         v
+                    [ Furnace ]
+                bars, ingots, wafers, refined coal
+                         |
+                         v
+                   [ Assembler ]
+          steel, wire, alloy, circuits, composite
+                         |
+                         v
+             nano_chip — processor — energy_cell
+                         |
+                         v
+                   [ Quantum Core ]
+                         |
+            titan_alloy + quantum_core → quantum_lattice
+            nebula_crystal + energy_cell → plasma_coil
+                         |
+                         v
+                   [ Synthesizer ]
+          quantum_lattice + plasma_coil → singularity_shard
 ```
 
 From humble iron ore to reality-bending Singularity Shards — the journey is yours to build.
@@ -68,18 +73,19 @@ From humble iron ore to reality-bending Singularity Shards — the journey is yo
 
 ## Features
 
-- **Single-file architecture** — ~4800 lines of vanilla JS, HTML, and CSS in one file
+- **Single-file architecture** — ~4900 lines of vanilla JS, HTML, and CSS in one file
 - **Web Worker simulation** — game logic runs on a separate thread for smooth 60fps rendering
 - **Procedural lo-fi music** — 6 unique tracks generated from oscillators, reverb, and tape wobble
 - **Procedural SFX** — every sound effect is synthesized in real-time
 - **Dark glassmorphic UI** — frosted glass panels, subtle glows, ambient dust motes
 - **Day/night cycle** — gentle color temperature shifts over an 8-minute cycle
-- **30+ resources** — from raw ores to quantum cores and singularity shards
-- **14 building types** — mines, belts (3 tiers), furnaces, assemblers, splitters, mergers, tunnels, labs, sellers, vein miners, ore synthesizers, and synthesizers
-- **Skill tree** — 7 tiers of research unlocking new buildings, speed boosts, and trade bonuses
+- **30 resources** — from raw ores to quantum cores and singularity shards
+- **15 building types** — mines, belts (3 tiers), furnaces, assemblers, splitters, mergers, tunnels, labs, sellers, vein miners, ore synthesizers, and synthesizers
+- **33 skill nodes** — 7 tiers of research unlocking new buildings, speed boosts, and trade bonuses, plus hidden prestige milestones
+- **22 recipes** — 8 furnace, 13 assembler, and 1 synthesizer recipe covering the full production chain
 - **Blueprint system** — copy, paste, and rotate sections of your factory
 - **Undo system** — Ctrl+Z to revert placements and deletions
-- **Milestones** — achievement-like goals tracking your progress from $500 to Transcendent Magnate
+- **Milestones & prestige** — achievement-like goals from $500 to Transcendent Magnate, with secret bonuses for quantum core and singularity shard production
 - **Adaptive quality** — automatically adjusts rendering detail to maintain smooth performance
 - **Accessibility** — respects `prefers-reduced-motion` for users who need it
 - **Auto-save** — progress is saved to localStorage every 5 seconds
@@ -92,7 +98,7 @@ From humble iron ore to reality-bending Singularity Shards — the journey is yo
 
 | Key | Action |
 |-----|--------|
-| `1` — `9` | Select building from build bar |
+| `1` — `9`, `0`, `=` | Select building from build bar |
 | `R` | Rotate building or blueprint |
 | `X` | Delete tool |
 | `C` | Blueprint: copy / paste mode |
@@ -116,10 +122,12 @@ Everything lives in a single HTML file with a two-thread architecture:
 
 ```
 Main Thread                           Web Worker
------------------------------------   -----------------------------------
+───────────────────────────────────   ───────────────────────────────────
 Renderer  — canvas 2D drawing         Simulation — all game logic
-UI        — DOM panels, menus          State      — map, buildings, items
-Game      — input + message bridge     Tick loop  — self-scheduling
+UI        — DOM panels, menus         State      — map, buildings, items
+Game      — input + message bridge    Tick loop  — self-scheduling
+SoundEngine — procedural SFX
+LoFiGen   — procedural music
 Config    — shared via JSON
 ```
 
