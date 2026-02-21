@@ -1712,21 +1712,21 @@ const ITEM_DOT_STYLES = {
     // Bars — wide rectangle
     iron_bar:      {cat:'bar', top:'#d0ddf0', mid:'#b0c0e0', bot:'#7088a8'},
     copper_bar:    {cat:'bar', top:'#f8caa8', mid:'#f0b090', bot:'#9a5e38'},
-    steel:         {cat:'bar', top:'#708898', mid:'#506070', bot:'#2a3a48'},
+    steel:         {cat:'bar', top:'#708898', mid:'#506070', bot:'#2a3a48', mk:'dot'},
     gold_ingot:    {cat:'bar', top:'#ffe860', mid:'#ffd700', bot:'#b89800', glow:true},
-    alloy:         {cat:'bar', top:'#a8b0b8', mid:'#889098', bot:'#505860'},
+    alloy:         {cat:'bar', top:'#a8b0b8', mid:'#889098', bot:'#505860', mk:'diag'},
     silicon_wafer: {cat:'bar', top:'#e0f4ff', mid:'#c8e8ff', bot:'#88b0d8'},
-    titanium_bar:  {cat:'bar', top:'#b0e0e0', mid:'#88c8c8', bot:'#508898'},
-    titan_alloy:   {cat:'bar', top:'#a0b0d8', mid:'#8090c0', bot:'#506090'},
+    titanium_bar:  {cat:'bar', top:'#b0e0e0', mid:'#88c8c8', bot:'#508898', mk:'hline'},
+    titan_alloy:   {cat:'bar', top:'#a0b0d8', mid:'#8090c0', bot:'#506090', mk:'diag2'},
     // Ores — pentagon
     iron_ore:      {cat:'ore', top:'#a0b0cc', mid:'#8a9bb8', bot:'#5a6a88'},
     copper_ore:    {cat:'ore', top:'#e8b8a0', mid:'#d4957a', bot:'#8a5540'},
     coal:          {cat:'ore', top:'#706868', mid:'#5a5050', bot:'#302828'},
-    stone:         {cat:'ore', top:'#a0a8b8', mid:'#8890a0', bot:'#585e6e'},
+    stone:         {cat:'ore', top:'#a0a8b8', mid:'#8890a0', bot:'#585e6e', mk:'hline'},
     gold_ore:      {cat:'ore', top:'#ffe060', mid:'#cda434', bot:'#8a6a10', glow:true},
     crystal:       {cat:'ore', top:'#a0ffff', mid:'#6be0e0', bot:'#38a0a0', glow:true},
     silicon:       {cat:'ore', top:'#a0d0e8', mid:'#7bb8d4', bot:'#4888a8'},
-    titanium_ore:  {cat:'ore', top:'#90c8c8', mid:'#70a8b8', bot:'#407888'},
+    titanium_ore:  {cat:'ore', top:'#90c8c8', mid:'#70a8b8', bot:'#407888', mk:'dot'},
     nebula_dust:   {cat:'ore', top:'#e0a0f0', mid:'#c87adf', bot:'#8848a0', glow:true},
     // Hexagons — circuits/chips
     circuit:           {cat:'hex', top:'#70e090', mid:'#48c26b', bot:'#288848', glow:true},
@@ -1737,7 +1737,7 @@ const ITEM_DOT_STYLES = {
     singularity_shard: {cat:'hex', top:'#ffe8f4', mid:'#f0d0e8', bot:'#c8a0b8', glow:true},
     // Diamonds
     nebula_crystal: {cat:'diamond', top:'#f0c0ff', mid:'#d8a0f0', bot:'#a070c0', glow:true},
-    plasma_coil:    {cat:'diamond', top:'#f0c0ff', mid:'#e0a0ff', bot:'#b070d0', glow:true},
+    plasma_coil:    {cat:'diamond', top:'#f0c0ff', mid:'#e0a0ff', bot:'#b070d0', glow:true, mk:'hline'},
     energy_cell:    {cat:'diamond', top:'#ffc840', mid:'#f0a820', bot:'#b07810', glow:true},
     // Wire — ring
     copper_wire: {cat:'wire', mid:'#c26b48', border:'#c26b48'},
@@ -1760,14 +1760,22 @@ function itemDotStyle(key, sz) {
     const glow = s.glow ? 'filter:drop-shadow(0 0 3px '+c+'88);' : '';
     if (cat==='bar') {
         const w = Math.round(sz*1.17), h = Math.round(sz*0.83);
-        return 'display:inline-block;width:'+w+'px;height:'+h+'px;border-radius:2px;flex-shrink:0;background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');box-shadow:0 1px 3px rgba(0,0,0,0.4);'+glow;
+        let bg = 'linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+')';
+        if (s.mk==='hline') bg = 'linear-gradient(to bottom,transparent 38%,rgba(255,255,255,0.4) 38%,rgba(255,255,255,0.4) 62%,transparent 62%),'+bg;
+        else if (s.mk==='dot') bg = 'radial-gradient(circle at 50% 50%,rgba(255,255,255,0.55) 12%,transparent 24%),'+bg;
+        else if (s.mk==='diag') bg = 'linear-gradient(135deg,transparent 35%,rgba(255,255,255,0.35) 35%,rgba(255,255,255,0.35) 65%,transparent 65%),'+bg;
+        else if (s.mk==='diag2') bg = 'linear-gradient(135deg,transparent 15%,rgba(255,255,255,0.28) 15%,rgba(255,255,255,0.28) 30%,transparent 30%,transparent 70%,rgba(255,255,255,0.28) 70%,rgba(255,255,255,0.28) 85%,transparent 85%),'+bg;
+        return 'display:inline-block;width:'+w+'px;height:'+h+'px;border-radius:2px;flex-shrink:0;background:'+bg+';box-shadow:0 1px 3px rgba(0,0,0,0.4);'+glow;
     }
     if (cat==='brick') {
         const w = Math.round(sz*1.08), h = Math.round(sz*0.83);
         return 'display:inline-block;width:'+w+'px;height:'+h+'px;border-radius:2px;flex-shrink:0;background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');box-shadow:0 1px 3px rgba(0,0,0,0.35);';
     }
     if (cat==='ore') {
-        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:linear-gradient(160deg,'+s.top+','+s.mid+' 50%,'+s.bot+');'+glow;
+        let bg = 'linear-gradient(160deg,'+s.top+','+s.mid+' 50%,'+s.bot+')';
+        if (s.mk==='hline') bg = 'linear-gradient(to bottom,transparent 38%,rgba(255,255,255,0.4) 38%,rgba(255,255,255,0.4) 62%,transparent 62%),'+bg;
+        else if (s.mk==='dot') bg = 'radial-gradient(circle at 50% 50%,rgba(255,255,255,0.55) 12%,transparent 24%),'+bg;
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:'+bg+';'+glow;
     }
     if (cat==='refined_coal') {
         return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:linear-gradient(160deg,'+s.top+','+s.mid+' 50%,'+s.bot+');filter:drop-shadow(0 0 2px #6688cc66);';
@@ -1776,7 +1784,9 @@ function itemDotStyle(key, sz) {
         return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');'+glow;
     }
     if (cat==='diamond'||cat==='composite') {
-        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:linear-gradient(135deg,'+s.top+','+s.mid+' 50%,'+s.bot+');'+glow;
+        let bg = 'linear-gradient(135deg,'+s.top+','+s.mid+' 50%,'+s.bot+')';
+        if (s.mk==='hline') bg = 'linear-gradient(to bottom,transparent 38%,rgba(255,255,255,0.4) 38%,rgba(255,255,255,0.4) 62%,transparent 62%),'+bg;
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:'+bg+';'+glow;
     }
     if (cat==='wire') {
         if (sz <= 10) {
@@ -2679,6 +2689,12 @@ class Renderer {
                         } else {
                             // Ores + fallback: pentagon
                             ctx.moveTo(_eX,_eY-4);ctx.lineTo(_eX+4,_eY-1.5);ctx.lineTo(_eX+2.5,_eY+3.5);ctx.lineTo(_eX-2.5,_eY+3.5);ctx.lineTo(_eX-4,_eY-1.5);ctx.closePath();ctx.fill();
+                        }
+                        if (_ids&&_ids.mk) {
+                            if (_ids.mk==='hline') { ctx.fillStyle='rgba(255,255,255,0.45)';ctx.fillRect(_eX-3.5,_eY-0.5,7,1); }
+                            else if (_ids.mk==='dot') { ctx.fillStyle='rgba(255,255,255,0.5)';ctx.beginPath();ctx.arc(_eX,_eY,1.2,0,Math.PI*2);ctx.fill(); }
+                            else if (_ids.mk==='diag') { ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(_eX-3,_eY+2.5);ctx.lineTo(_eX+3,_eY-2.5);ctx.stroke(); }
+                            else if (_ids.mk==='diag2') { ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(_eX-4,_eY+1);ctx.lineTo(_eX,_eY-3);ctx.moveTo(_eX,_eY+3);ctx.lineTo(_eX+4,_eY-1);ctx.stroke(); }
                         }
                         ctx.fillStyle='#c8d4e8';
                         ctx.fillText(_ek.replace(/_/g,' ')+' \xd7'+_ev,_opx+_bP+13,_eY);
