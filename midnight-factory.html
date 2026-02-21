@@ -543,7 +543,7 @@ function generateMap(seedStr) {
 
     // Exotic ores: 35 veins near map edges (separate RNG pass preserves existing map)
     var _exoticRes = ['titanium_ore','nebula_dust'];
-    var _exoticWeights = [65, 35];
+    var _exoticWeights = [50, 50];
     for (var _ei = 0; _ei < 35; _ei++) {
         var _eRoll = rng() * 100;
         var _eRes = _eRoll < _exoticWeights[0] ? _exoticRes[0] : _exoticRes[1];
@@ -554,10 +554,10 @@ function generateMap(seedStr) {
         else if (_eSide === 1) { _eCx = 5 + Math.floor(rng() * (MW - 10)); _eCy = MH - 5 - Math.floor(rng() * 35); }
         else if (_eSide === 2) { _eCx = 5 + Math.floor(rng() * 35); _eCy = 5 + Math.floor(rng() * (MH - 10)); }
         else { _eCx = MW - 5 - Math.floor(rng() * 35); _eCy = 5 + Math.floor(rng() * (MH - 10)); }
-        var _eSteps = _eRes === 'nebula_dust' ? (3 + Math.floor(rng() * 6)) : (6 + Math.floor(rng() * 13));
+        var _eSteps = _eRes === 'nebula_dust' ? (5 + Math.floor(rng() * 8)) : (6 + Math.floor(rng() * 13));
         var _eTx = _eCx, _eTy = _eCy;
         for (var _es = 0; _es < _eSteps; _es++) {
-            if (_eTx >= 2 && _eTx < MW-2 && _eTy >= 2 && _eTy < MH-2) {
+            if (_eTx >= 2 && _eTx < MW-3 && _eTy >= 2 && _eTy < MH-3) {
                 state.map[_eTy][_eTx] = _eRes; state.oreAmounts[_eTy][_eTx] += 200;
                 if (rng() > 0.5) { state.map[_eTy+1][_eTx] = _eRes; state.oreAmounts[_eTy+1][_eTx] += 200; }
                 if (rng() > 0.5) { state.map[_eTy][_eTx+1] = _eRes; state.oreAmounts[_eTy][_eTx+1] += 200; }
@@ -692,6 +692,8 @@ self.onmessage = function(e) {
             }
             break;
         case 'set_ore_synth_filter':
+            var _validSynth={'iron_ore':1,'copper_ore':1,'coal':1,'stone':1,'titanium_ore':1,'nebula_dust':1};
+            if (msg.oreType&&!_validSynth[msg.oreType]) break;
             if (state.buildings[msg.y]&&state.buildings[msg.y][msg.x]&&state.buildings[msg.y][msg.x].type==='ore_synthesizer') {
                 state.buildings[msg.y][msg.x].synthOre = msg.oreType||null;
                 postMessage({type:'ore_synth_filter_set',x:msg.x,y:msg.y,oreType:msg.oreType||null});
@@ -1056,15 +1058,15 @@ function tick(now) {
         firedMilestones.add('prestige_4');
         postMessage({type:'milestone',text:'ASCENDANT',sfx:'quantum_core',qc:_quantumCoreCount});
     }
-    if (_singularityCount>=1&&!firedMilestones.has('sing_prestige_1')) {
+    if (_singularityCount>=5&&!firedMilestones.has('sing_prestige_1')) {
         firedMilestones.add('sing_prestige_1'); state.unlockedTechs.add('sing_prestige_1');
         postMessage({type:'milestone',text:'Singularity Prestige I \u2014 All sell values +25%.',sfx:'quantum_core'});
     }
-    if (_singularityCount>=5&&!firedMilestones.has('sing_prestige_2')) {
+    if (_singularityCount>=15&&!firedMilestones.has('sing_prestige_2')) {
         firedMilestones.add('sing_prestige_2'); state.unlockedTechs.add('sing_prestige_2');
         postMessage({type:'milestone',text:'Singularity Prestige II \u2014 Synthesizer +20% speed.',sfx:'quantum_core'});
     }
-    if (_singularityCount>=10&&!firedMilestones.has('sing_prestige_3')) {
+    if (_singularityCount>=25&&!firedMilestones.has('sing_prestige_3')) {
         firedMilestones.add('sing_prestige_3');
         postMessage({type:'milestone',text:'TRANSCENDENT FACTORY',sfx:'quantum_core',singCount:_singularityCount});
     }
@@ -1160,7 +1162,7 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('rp_trade_2')) val*=1.1;
                         if (state.unlockedTechs.has('research_grant')) val*=1.08;
                         if (state.unlockedTechs.has('gold_refining')&&it.type==='gold_ingot') val*=1.25;
-                        if (state.unlockedTechs.has('nebula_resonance')&&it.type==='nebula_crystal') val*=1.5;
+                        if (state.unlockedTechs.has('nebula_resonance')&&it.type==='plasma_coil') val*=1.5;
                         if (state.unlockedTechs.has('sing_prestige_1')) val*=1.25;
                         val=Math.round(val);
                         state.money+=val; b.totalSold+=val;
@@ -1181,9 +1183,7 @@ function updateSimulation(dt) {
                         state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
                     } else if (b.type==="ore_synthesizer") {
-                        if (it.type==='energy_cell') { b.inventory[it.type]=(b.inventory[it.type]||0)+1; }
-                        state.items[i] = state.items[state.items.length - 1]; state.items.length--;
-                        _BC[it.y*Config.MAP_W+it.x]--;
+                        if (it.type==='energy_cell') { b.inventory[it.type]=(b.inventory[it.type]||0)+1; state.items[i] = state.items[state.items.length - 1]; state.items.length--; _BC[it.y*Config.MAP_W+it.x]--; }
                     } else if (b.type==="furnace"||b.type==="assembler"||b.type==="synthesizer") {
                         b.inventory[it.type]=(b.inventory[it.type]||0)+1; state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
@@ -1279,15 +1279,17 @@ function updateSimulation(dt) {
         } else if (b.type==="furnace") { processRecipe(b,"furnace",dt);
         } else if (b.type==="assembler") { processRecipe(b,"assembler",dt);
         } else if (b.type==="ore_synthesizer") {
-            if (!b.outBuffer && b.synthOre && (b.inventory.energy_cell||0) >= 1) {
+            var _osExotic = (b.synthOre==='titanium_ore'||b.synthOre==='nebula_dust');
+            var _osCost = _osExotic ? 2 : 1;
+            if (!b.outBuffer && b.synthOre && (b.inventory.energy_cell||0) >= _osCost) {
                 b.timer += dt;
                 b.idleTimer = 0;
                 if (b.timer >= 4000) {
-                    b.inventory.energy_cell -= 1;
+                    b.inventory.energy_cell -= _osCost;
                     b.outBuffer = b.synthOre;
                     b.timer = 0;
                 }
-            } else if (!b.synthOre || (b.inventory.energy_cell||0) < 1) {
+            } else if (!b.synthOre || (b.inventory.energy_cell||0) < _osCost) {
                 b.idleTimer = (b.idleTimer||0) + dt;
             }
         } else if (b.type==="synthesizer") { processRecipe(b,"synthesizer",dt);
@@ -1440,6 +1442,7 @@ function processRecipe(b, machineType, dt) {
             let rts=timeScale;
             if (machineType==='furnace'&&r.out==='gold_ingot'&&state.unlockedTechs.has('gold_refining')) rts*=0.5;
             if (machineType==='furnace'&&r.out==='titanium_bar'&&state.unlockedTechs.has('titan_smelting')) rts*=0.6;
+            if (machineType==='assembler'&&r.out==='titan_alloy'&&state.unlockedTechs.has('titan_smelting')) rts*=0.8;
             if (machineType==='assembler'&&r.out==='energy_cell'&&state.unlockedTechs.has('energy_mastery')) rts*=0.65;
             b.crafting=r.out; b.craftTime=r.time*rts; b.timer=0; b.idleTimer=0; started=true; break;
         }
@@ -1488,6 +1491,7 @@ function pushItem(x,y,b,it) {
             if (tb.type.startsWith("belt")||tb.type==="splitter"||tb.type==="merger"||
                 tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||
                 tb.type==="ore_synthesizer"||tb.type==="synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") {
+                if (tb.type==="ore_synthesizer"&&it.type!=='energy_cell') return;
                 if (tb.type.startsWith("belt")||tb.type==="tunnel_in"||tb.type==="tunnel_out") { if (outDir===((tb.dir+2)%4)) return; }
                 if (tb.type==="splitter") { if (outDir!==tb.dir) return; }
                 if (tb.type==="merger") { if (x===tx+DIRS[tb.dir][0]&&y===ty+DIRS[tb.dir][1]) return; }
@@ -1672,11 +1676,11 @@ const Config = {
             rp_trade_2: {id:"rp_trade_2",name:"Market Insight II",costRP:1500,costCr:0,unlocks:[],desc:"Sell value +10% again. Stacks with Market Insight I.",req:["rp_trade_1"],x:1620,y:550},
             alloy_mastery: {id:"alloy_mastery",name:"Alloy Mastery",costRP:1800,costCr:0,unlocks:[],desc:"Assembler speed +20% additional. Pure RP investment.",req:["nano_tech"],x:1360,y:420},
             deep_synthesis: {id:"deep_synthesis",name:"Deep Synthesis",costRP:4000,costCr:80000,unlocks:["synthesizer"],desc:"Unlock the Synthesizer. Forge Singularity Shards from quantum materials.",req:["exotic_mining","nano_tech"],x:1360,y:680},
-            titan_smelting: {id:"titan_smelting",name:"Titan Smelting",costRP:1500,costCr:0,unlocks:[],desc:"Titanium smelting time -40%. Pure RP investment.",req:["exotic_mining"],x:1360,y:750}
+            titan_smelting: {id:"titan_smelting",name:"Titan Smelting",costRP:1500,costCr:0,unlocks:[],desc:"Titanium smelting -40%. Titan Alloy assembly -20%.",req:["exotic_mining"],x:1360,y:750}
         },
         tier7: {
-            synthesis_mastery: {id:"synthesis_mastery",name:"Synthesis Mastery",costRP:6000,costCr:0,unlocks:[],desc:"Synthesizer speed +30%. Pure RP investment.",req:["deep_synthesis"],x:1620,y:680},
-            nebula_resonance: {id:"nebula_resonance",name:"Nebula Resonance",costRP:3500,costCr:0,unlocks:[],desc:"Nebula Crystal sell value +50%. Singularity Shard RP x2.",req:["deep_synthesis"],x:1620,y:750}
+            synthesis_mastery: {id:"synthesis_mastery",name:"Synthesis Mastery",costRP:4500,costCr:0,unlocks:[],desc:"Synthesizer speed +30%. Pure RP investment.",req:["deep_synthesis"],x:1620,y:680},
+            nebula_resonance: {id:"nebula_resonance",name:"Nebula Resonance",costRP:3500,costCr:0,unlocks:[],desc:"Plasma Coil sell value +50%. Singularity Shard RP x2.",req:["deep_synthesis"],x:1620,y:750}
         }
     }
 };
@@ -4606,7 +4610,7 @@ class Game {
         if (b.type==='ore_synthesizer') {
             var _osEC2 = b.inventory?.energy_cell || 0;
             rows+='<div class="bip-row">Energy Cells: '+_osEC2+'</div>';
-            var _baseOres = ['iron_ore','copper_ore','coal','stone'];
+            var _baseOres = ['iron_ore','copper_ore','coal','stone','titanium_ore','nebula_dust'];
             var _osSel = 'background:#0f111a;border:1px solid var(--border);color:var(--text-active);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;cursor:pointer;margin-top:2px;';
             var _osOpts = _baseOres.map(function(r){return '<option value="'+r+'"'+(b.synthOre===r?' selected':'')+'>'+r.replace(/_/g,' ')+'</option>';}).join('');
             rows+='<div class="bip-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:6px 0 2px;"><span style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Output Ore</span><select id="bip-os-filter" style="'+_osSel+'"><option value="">-- Select ore --</option>'+_osOpts+'</select></div>';
