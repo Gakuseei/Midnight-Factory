@@ -1707,6 +1707,86 @@ const EXOTIC_ORES_SET = new Set(['titanium_ore','nebula_dust']);
 // Buildings that can show idle-glow (defined once — avoids inline array per-tile per-frame)
 const _IDLE_TYPES = new Set(['furnace','assembler','seller','lab','ore_synthesizer','synthesizer']);
 
+// ── Item dot styles for UI (Recipe Book, Stats, Building Info, Tooltip) ──────
+const ITEM_DOT_STYLES = {
+    // Bars — wide rectangle
+    iron_bar:      {cat:'bar', top:'#d0ddf0', mid:'#b0c0e0', bot:'#7088a8'},
+    copper_bar:    {cat:'bar', top:'#f8caa8', mid:'#f0b090', bot:'#9a5e38'},
+    steel:         {cat:'bar', top:'#708898', mid:'#506070', bot:'#2a3a48'},
+    gold_ingot:    {cat:'bar', top:'#ffe860', mid:'#ffd700', bot:'#b89800', glow:true},
+    alloy:         {cat:'bar', top:'#9aa0b0', mid:'#778090', bot:'#4a5568'},
+    silicon_wafer: {cat:'bar', top:'#e0f4ff', mid:'#c8e8ff', bot:'#88b0d8'},
+    titanium_bar:  {cat:'bar', top:'#c0d4f0', mid:'#a0b8e0', bot:'#6888b0'},
+    titan_alloy:   {cat:'bar', top:'#b0c8e8', mid:'#90a8d0', bot:'#5878a0'},
+    // Ores — pentagon
+    iron_ore:      {cat:'ore', top:'#a0b0cc', mid:'#8a9bb8', bot:'#5a6a88'},
+    copper_ore:    {cat:'ore', top:'#e8b8a0', mid:'#d4957a', bot:'#8a5540'},
+    coal:          {cat:'ore', top:'#808090', mid:'#6a6a7a', bot:'#3a3a48'},
+    stone:         {cat:'ore', top:'#a0a0b0', mid:'#8a8a9a', bot:'#5a5a6a'},
+    gold_ore:      {cat:'ore', top:'#ffe060', mid:'#cda434', bot:'#8a6a10', glow:true},
+    crystal:       {cat:'ore', top:'#a0ffff', mid:'#6be0e0', bot:'#38a0a0', glow:true},
+    silicon:       {cat:'ore', top:'#a0d0e8', mid:'#7bb8d4', bot:'#4888a8'},
+    titanium_ore:  {cat:'ore', top:'#a8b8d8', mid:'#8aa0c8', bot:'#5a7098'},
+    nebula_dust:   {cat:'ore', top:'#e0a0f0', mid:'#c87adf', bot:'#8848a0', glow:true},
+    // Hexagons — circuits/chips
+    circuit:           {cat:'hex', top:'#70e090', mid:'#48c26b', bot:'#288848', glow:true},
+    nano_chip:         {cat:'hex', top:'#70e0f8', mid:'#40c8e8', bot:'#2098b0', glow:true},
+    processor:         {cat:'hex', top:'#c070e0', mid:'#9a48c2', bot:'#6a2890', glow:true},
+    quantum_core:      {cat:'hex', top:'#f0e8ff', mid:'#e0d0ff', bot:'#b0a0d0', glow:true},
+    quantum_lattice:   {cat:'hex', top:'#d0d8ff', mid:'#b8c8ff', bot:'#8898d0', glow:true},
+    singularity_shard: {cat:'hex', top:'#fff0ff', mid:'#f0e0ff', bot:'#c0b0d8', glow:true},
+    // Diamonds
+    nebula_crystal: {cat:'diamond', top:'#f0c0ff', mid:'#d8a0f0', bot:'#a070c0', glow:true},
+    plasma_coil:    {cat:'diamond', top:'#f0c0ff', mid:'#e0a0ff', bot:'#b070d0', glow:true},
+    energy_cell:    {cat:'diamond', top:'#ffc840', mid:'#f0a820', bot:'#b07810', glow:true},
+    // Wire — ring
+    copper_wire: {cat:'wire', mid:'#c26b48', border:'#c26b48'},
+    // Brick — squarish rect
+    brick: {cat:'brick', top:'#d8a080', mid:'#c08060', bot:'#805838'},
+    // Refined coal — pentagon with blue sheen
+    refined_coal: {cat:'refined_coal', top:'#a0a0c0', mid:'#8a8aaa', bot:'#5a5a78'},
+    // Composite — diamond variant
+    composite: {cat:'composite', top:'#8888a0', mid:'#707088', bot:'#484858'}
+};
+
+function itemDotStyle(key, sz) {
+    const s = ITEM_DOT_STYLES[key];
+    const c = (Config.RESOURCES[key]||{color:'#aaa'}).color;
+    if (!s) {
+        // Fallback: simple circle
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;border-radius:50%;flex-shrink:0;background:'+c+';box-shadow:0 0 4px '+c+'66';
+    }
+    const cat = s.cat;
+    const glow = s.glow ? 'filter:drop-shadow(0 0 3px '+c+'88);' : '';
+    if (cat==='bar') {
+        const w = Math.round(sz*1.17), h = Math.round(sz*0.83);
+        return 'display:inline-block;width:'+w+'px;height:'+h+'px;border-radius:2px;flex-shrink:0;background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');box-shadow:0 1px 3px rgba(0,0,0,0.4);'+glow;
+    }
+    if (cat==='brick') {
+        const w = Math.round(sz*1.08), h = Math.round(sz*0.83);
+        return 'display:inline-block;width:'+w+'px;height:'+h+'px;border-radius:2px;flex-shrink:0;background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');box-shadow:0 1px 3px rgba(0,0,0,0.35);';
+    }
+    if (cat==='ore') {
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:linear-gradient(160deg,'+s.top+','+s.mid+' 50%,'+s.bot+');'+glow;
+    }
+    if (cat==='refined_coal') {
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:linear-gradient(160deg,'+s.top+','+s.mid+' 50%,'+s.bot+');filter:drop-shadow(0 0 2px #6688cc66);';
+    }
+    if (cat==='hex') {
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:linear-gradient(to bottom,'+s.top+','+s.mid+' 45%,'+s.bot+');'+glow;
+    }
+    if (cat==='diamond'||cat==='composite') {
+        return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;flex-shrink:0;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:linear-gradient(135deg,'+s.top+','+s.mid+' 50%,'+s.bot+');'+glow;
+    }
+    if (cat==='wire') {
+        const bw = Math.max(2, Math.round(sz*0.22));
+        const inner = sz - bw*2;
+        return 'display:inline-block;width:'+inner+'px;height:'+inner+'px;border-radius:50%;flex-shrink:0;background:transparent;border:'+bw+'px solid '+s.border+';box-shadow:inset 0 -1px 2px rgba(0,0,0,0.3),0 0 3px '+s.border+'66;';
+    }
+    // Final fallback
+    return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;border-radius:50%;flex-shrink:0;background:'+c+';box-shadow:0 0 4px '+c+'66';
+}
+
 class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas; this.ctx = ctx;
