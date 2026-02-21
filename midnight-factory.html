@@ -2150,7 +2150,37 @@ class Renderer {
                 const _col=(Config.RESOURCES[_type]||{color:'#fff'}).color;
                 const _n=_pts.length>>1;
                 ctx.fillStyle=_col;
-                if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
+                if (_type==='copper_bar') {
+                    // Copper bar: ingot with depth, beveled highlight, shadow
+                    const _bw=T*0.4,_bh=T*0.2;
+                    // Drop shadow
+                    ctx.fillStyle='rgba(60,25,10,0.35)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]-_bh/2+1,_bw,_bh);
+                    ctx.fill();
+                    // Main body
+                    ctx.fillStyle=_col;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2,_pts[_j*2+1]-_bh/2,_bw,_bh);
+                    ctx.fill();
+                    // Dark outline
+                    ctx.strokeStyle='rgba(130,65,35,0.7)';ctx.lineWidth=1.5;ctx.stroke();
+                    // Top highlight bevel (upper strip)
+                    ctx.fillStyle='rgba(255,215,175,0.3)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]-_bh/2,_bw-2,_bh*0.35);
+                    ctx.fill();
+                    // Bottom darker bevel
+                    ctx.fillStyle='rgba(80,35,15,0.25)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]+_bh*0.15,_bw-2,_bh*0.35);
+                    ctx.fill();
+                    // Specular highlight streak
+                    ctx.fillStyle='rgba(255,235,210,0.4)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw*0.2,_pts[_j*2+1]-_bh/2+1,_bw*0.25,_bh*0.25);
+                    ctx.fill();
+                } else if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
                     // Bars / ingots: batch as rects
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-T*0.2,_pts[_j*2+1]-T*0.1,T*0.4,T*0.2);
@@ -2177,11 +2207,36 @@ class Renderer {
                     }
                     ctx.stroke();
                 } else if (_type==='copper_wire') {
-                    // Circle strokes — can't batch a single fill, but group stroke state
-                    ctx.strokeStyle=_col; ctx.lineWidth=3;
+                    // Copper wire coil: ring with depth, sheen, shadow
+                    const _wr=T*0.15;
+                    // Drop shadow ring
+                    ctx.strokeStyle='rgba(60,25,10,0.3)';ctx.lineWidth=3.5;
                     for (let _j=0;_j<_n;_j++) {
-                        ctx.beginPath(); ctx.arc(_pts[_j*2],_pts[_j*2+1],T*0.15,0,Math.PI*2); ctx.stroke();
+                        ctx.beginPath();ctx.arc(_pts[_j*2]+0.8,_pts[_j*2+1]+0.8,_wr,0,Math.PI*2);ctx.stroke();
                     }
+                    // Main copper ring
+                    ctx.strokeStyle=_col;ctx.lineWidth=3;
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.beginPath();ctx.arc(_pts[_j*2],_pts[_j*2+1],_wr,0,Math.PI*2);ctx.stroke();
+                    }
+                    // Dark inner edge
+                    ctx.strokeStyle='rgba(100,45,25,0.5)';ctx.lineWidth=1;
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.beginPath();ctx.arc(_pts[_j*2],_pts[_j*2+1],_wr-1.5,0,Math.PI*2);ctx.stroke();
+                    }
+                    // Bright highlight arc (upper-left 90deg)
+                    ctx.strokeStyle='rgba(255,200,155,0.5)';ctx.lineWidth=1.5;ctx.lineCap='round';
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.beginPath();ctx.arc(_pts[_j*2],_pts[_j*2+1],_wr,Math.PI*0.9,Math.PI*1.45);ctx.stroke();
+                    }
+                    // Specular dot at top-left of ring
+                    ctx.fillStyle='rgba(255,235,210,0.5)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.moveTo(_pts[_j*2]-_wr*0.6+1.2,_pts[_j*2+1]-_wr*0.55);
+                        ctx.arc(_pts[_j*2]-_wr*0.6,_pts[_j*2+1]-_wr*0.55,1.2,0,Math.PI*2);
+                    }
+                    ctx.fill();ctx.lineCap='butt';
                 } else if (_type==='nebula_crystal'||_type==='plasma_coil') {
                     // Diamonds with glow (nebula/plasma items)
                     ctx.shadowColor=_col; ctx.shadowBlur=12;
