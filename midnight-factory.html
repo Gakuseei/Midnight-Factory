@@ -394,6 +394,7 @@ kbd.shortcut-key {
   <div class="rb-tabs">
     <button class="rb-tab active" data-tab="furnace">🔥 Furnace</button>
     <button class="rb-tab" data-tab="assembler">⚙️ Assembler</button>
+    <button class="rb-tab" data-tab="synthesizer">🔮 Synthesizer</button>
   </div>
   <div id="recipe-book-content" class="rb-list"></div>
 </div>
@@ -606,6 +607,8 @@ self.onmessage = function(e) {
                 var _lb = state.activeBuildings[_li].b;
                 if (_lb.type === 'assembler' && _lb.lockedRecipe) {
                     _lb._lockedRecipeRef = Config.RECIPES.assembler.find(function(r){ return r.out === _lb.lockedRecipe; }) || null;
+                } else if (_lb.type === 'synthesizer' && _lb.lockedRecipe) {
+                    _lb._lockedRecipeRef = Config.RECIPES.synthesizer.find(function(r){ return r.out === _lb.lockedRecipe; }) || null;
                 } else { _lb._lockedRecipeRef = null; }
             }
             if (msg.save && msg.save.oreData)
@@ -653,10 +656,12 @@ self.onmessage = function(e) {
         case 'undo': tryUndo(); break;
         case 'force_save': emitSave(); break;
         case 'set_recipe':
-            if (state.buildings[msg.y]?.[msg.x]?.type==='assembler') {
-                state.buildings[msg.y][msg.x].lockedRecipe=msg.recipe||null;
-                state.buildings[msg.y][msg.x]._lockedRecipeRef=msg.recipe
-                    ? (Config.RECIPES.assembler.find(function(r){ return r.out === msg.recipe; }) || null)
+            var _srb = state.buildings[msg.y]&&state.buildings[msg.y][msg.x];
+            if (_srb&&(_srb.type==='assembler'||_srb.type==='synthesizer')) {
+                var _srRecipeList = _srb.type==='synthesizer' ? Config.RECIPES.synthesizer : Config.RECIPES.assembler;
+                _srb.lockedRecipe=msg.recipe||null;
+                _srb._lockedRecipeRef=msg.recipe
+                    ? (_srRecipeList.find(function(r){ return r.out === msg.recipe; }) || null)
                     : null;
                 scheduleEmitSave();
             }
@@ -874,7 +879,7 @@ function tick(now) {
                     var _pvmTiles = _phb.veinTiles ? _phb.veinTiles.length : 0;
                     var _pvmRem = _phb.remainingOre || 0;
                     _pauseHover = "Vein Mining "+_pvmOre.replace(/_/g,' ')+" \u2014 "+_pvmRem+" ore in "+_pvmTiles+" tiles";
-                } else if (_phb.type==="furnace"||_phb.type==="assembler") {
+                } else if (_phb.type==="furnace"||_phb.type==="assembler"||_phb.type==="synthesizer") {
                     if (_phb.crafting) {
                         var _ppct = Math.floor((_phb.timer/_phb.craftTime)*100);
                         _pauseHover = "Crafting "+_phb.crafting.replace(/_/g,' ')+" \u2014 "+_ppct+"%";
@@ -882,8 +887,9 @@ function tick(now) {
                         var _pinv = Object.entries(_phb.inventory).filter(function(e){return e[1]>0;}).map(function(e){return e[1]+"\u00d7 "+e[0].replace(/_/g,' ');}).join(', ');
                         if (_phb.outBuffer) {
                             _pauseHover = "Output blocked \u2014 "+_phb.outBuffer.replace(/_/g,' ')+" ready"+(_pinv?", "+_pinv:"");
-                        } else if (_pinv && _phb.type==="assembler") {
-                            var _precipeHints = Config.RECIPES.assembler.map(function(r) {
+                        } else if (_pinv && (_phb.type==="assembler"||_phb.type==="synthesizer")) {
+                            var _phintType = (_phb.type === 'synthesizer') ? 'synthesizer' : 'assembler';
+                            var _precipeHints = Config.RECIPES[_phintType].map(function(r) {
                                 var needs = Object.entries(r.in).filter(function(e){return (_phb.inventory[e[0]]||0)<e[1];}).map(function(e){return e[1]+"\u00d7 "+e[0].replace(/_/g,' ');});
                                 return { out: r.out, needs: needs };
                             }).filter(function(r) { return r.needs.length > 0 && r.needs.length <= 2; });
@@ -952,7 +958,7 @@ function tick(now) {
                 var _vmTilesLeft = hb.veinTiles ? hb.veinTiles.length : 0;
                 var _vmRemH = hb.remainingOre || 0;
                 hoverData = "Vein Mining "+_vmOreH.replace(/_/g,' ')+" \u2014 "+_vmRemH+" ore in "+_vmTilesLeft+" tiles";
-            } else if (hb.type==="furnace"||hb.type==="assembler") {
+            } else if (hb.type==="furnace"||hb.type==="assembler"||hb.type==="synthesizer") {
                 if (hb.crafting) {
                     const pct = Math.floor((hb.timer/hb.craftTime)*100);
                     hoverData = "Crafting "+hb.crafting.replace(/_/g,' ')+" \u2014 "+pct+"%";
@@ -960,9 +966,10 @@ function tick(now) {
                     const inv = Object.entries(hb.inventory).filter(([,v])=>v>0).map(([k,v])=>v+"\u00d7 "+k.replace(/_/g,' ')).join(', ');
                     if (hb.outBuffer) {
                         hoverData = "Output blocked \u2014 "+hb.outBuffer.replace(/_/g,' ')+" ready"+(inv?", "+inv:"");
-                    } else if (inv && hb.type==="assembler") {
+                    } else if (inv && (hb.type==="assembler"||hb.type==="synthesizer")) {
                         // Find closest matching recipe to hint the player
-                        const recipeHints = Config.RECIPES.assembler.map(r => {
+                        const _hintType = (hb.type === 'synthesizer') ? 'synthesizer' : 'assembler';
+                        const recipeHints = Config.RECIPES[_hintType].map(r => {
                             const needs = Object.entries(r.in).filter(([k,v])=>(hb.inventory[k]||0)<v).map(([k,v])=>v+"\u00d7 "+k.replace(/_/g,' '));
                             return { out: r.out, needs };
                         }).filter(r => r.needs.length > 0 && r.needs.length <= 2);
@@ -1057,7 +1064,7 @@ function tick(now) {
                 buildingStats[bk] = { itemsPassed: ab.b.itemsPassed };
             } else if (ab.b.type === 'ore_synthesizer') {
                 buildingStats[bk] = { inventory: Object.assign({}, ab.b.inventory), crafting: ab.b.synthOre||null };
-            } else if (ab.b.type === 'furnace' || ab.b.type === 'assembler') {
+            } else if (ab.b.type === 'furnace' || ab.b.type === 'assembler' || ab.b.type === 'synthesizer') {
                 buildingStats[bk] = { inventory: Object.assign({}, ab.b.inventory), crafting: ab.b.crafting||null };
             }
         }
@@ -1151,7 +1158,7 @@ function updateSimulation(dt) {
                         if (it.type==='energy_cell') { b.inventory[it.type]=(b.inventory[it.type]||0)+1; }
                         state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
-                    } else if (b.type==="furnace"||b.type==="assembler") {
+                    } else if (b.type==="furnace"||b.type==="assembler"||b.type==="synthesizer") {
                         b.inventory[it.type]=(b.inventory[it.type]||0)+1; state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
                     }
@@ -1257,6 +1264,7 @@ function updateSimulation(dt) {
             } else if (!b.synthOre || (b.inventory.energy_cell||0) < 1) {
                 b.idleTimer = (b.idleTimer||0) + dt;
             }
+        } else if (b.type==="synthesizer") { processRecipe(b,"synthesizer",dt);
         }
 
         if (b.type.startsWith("belt")) {
@@ -1393,7 +1401,7 @@ function processRecipe(b, machineType, dt) {
     if (machineType==='assembler'&&state.unlockedTechs.has('prestige_2')) timeScale*=0.9;
     let started=false;
     // If a recipe is locked, only try that one; otherwise iterate all in order
-    const recipes = (machineType==='assembler' && b._lockedRecipeRef)
+    const recipes = ((machineType==='assembler'||machineType==='synthesizer') && b._lockedRecipeRef)
         ? [b._lockedRecipeRef]
         : Config.RECIPES[machineType];
     for (const r of recipes) {
@@ -1450,7 +1458,7 @@ function pushItem(x,y,b,it) {
         if (tb&&_TC[_bci]<_tcMax&&_BC[_bci]<Config.BELT_CAPACITY) {
             if (tb.type.startsWith("belt")||tb.type==="splitter"||tb.type==="merger"||
                 tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||
-                tb.type==="ore_synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") {
+                tb.type==="ore_synthesizer"||tb.type==="synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") {
                 if (tb.type.startsWith("belt")||tb.type==="tunnel_in"||tb.type==="tunnel_out") { if (outDir===((tb.dir+2)%4)) return; }
                 if (tb.type==="splitter") { if (outDir!==tb.dir) return; }
                 if (tb.type==="merger") { if (x===tx+DIRS[tb.dir][0]&&y===ty+DIRS[tb.dir][1]) return; }
@@ -1463,7 +1471,7 @@ function pushItem(x,y,b,it) {
                 const _ph=passHistoryMap.get(phk);
                 _ph.buf[_ph.head]=_nowRT; _ph.head=(_ph.head+1)%200; if(_ph.len<200)_ph.len++;
                 if (tb.type==="merger") it.fromDir=outDir;
-                if (tb.type==="splitter"||tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||tb.type==="ore_synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") it.lane=0;
+                if (tb.type==="splitter"||tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||tb.type==="ore_synthesizer"||tb.type==="synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") it.lane=0;
                 if (b.type==="merger") b.rrIndex=(b.rrIndex+1)%2;
                 if (flip) b.rrIndex=(b.rrIndex+1)%2;
                 return true;
@@ -2188,7 +2196,7 @@ class Renderer {
         if (uiState.hoverTile && !uiState.skillTreeOpen && (!uiState.selectedTool || uiState.selectedTool==='delete')) {
             const _ohx=uiState.hoverTile.x, _ohy=uiState.hoverTile.y;
             const _ob=state.buildings&&state.buildings[_ohy]&&state.buildings[_ohy][_ohx];
-            if (_ob && (_ob.type==='furnace'||_ob.type==='assembler'||_ob.type==='ore_synthesizer')) {
+            if (_ob && (_ob.type==='furnace'||_ob.type==='assembler'||_ob.type==='ore_synthesizer'||_ob.type==='synthesizer')) {
                 const _inv3=_ob.inventory||{};
                 const _ents=Object.entries(_inv3).filter(([,v])=>v>0);
                 if (_ents.length>0) {
@@ -2517,6 +2525,37 @@ class Renderer {
                 ctx.globalAlpha = 1;
             }
             ctx.fillStyle = 'rgba(120,200,160,0.85)';
+            ctx.beginPath();
+            ctx.moveTo(0, -hh * 0.73);
+            ctx.lineTo(-hh * 0.16, -hh * 0.53);
+            ctx.lineTo(hh * 0.16, -hh * 0.53);
+            ctx.closePath(); ctx.fill();
+        } else if (b.type==="synthesizer") {
+            const _syGrad = ctx.createRadialGradient(0, -hh*0.25, hh*0.08, 0, 0, hh);
+            _syGrad.addColorStop(0, '#5a3a8a');
+            _syGrad.addColorStop(1, '#2a1c4a');
+            ctx.fillStyle = _syGrad;
+            ctx.strokeStyle = 'rgba(180,140,255,0.45)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(-hh, -hh, sz, sz, 5); ctx.fill(); ctx.stroke();
+            if (Q >= 1) {
+                const _syStarTx = ctx.getTransform();
+                ctx.rotate(this.time * 0.002);
+                ctx.strokeStyle = 'rgba(200,170,255,0.8)';
+                ctx.lineWidth = 2; ctx.lineCap = 'round';
+                ctx.beginPath();
+                for (var _ssi = 0; _ssi < 4; _ssi++) {
+                    var _ssa = _ssi * Math.PI / 2;
+                    ctx.moveTo(Math.cos(_ssa) * hh * 0.12, Math.sin(_ssa) * hh * 0.12);
+                    ctx.lineTo(Math.cos(_ssa) * hh * 0.45, Math.sin(_ssa) * hh * 0.45);
+                }
+                ctx.stroke();
+                ctx.setTransform(_syStarTx);
+            }
+            const _syPulse = 0.5 + 0.5 * Math.sin(this.time * 0.003);
+            ctx.fillStyle = 'rgba(220,200,255,' + (0.6 + _syPulse * 0.4) + ')';
+            ctx.beginPath(); ctx.arc(0, 0, hh * 0.18, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(180,140,255,0.85)';
             ctx.beginPath();
             ctx.moveTo(0, -hh * 0.73);
             ctx.lineTo(-hh * 0.16, -hh * 0.53);
@@ -3470,7 +3509,8 @@ class UI {
             {id:"assembler",icon:"⚙️",name:"Assembler",cost:Config.BUILD_COSTS.assembler,req:"steel_prod"},
             {id:"lab",icon:"🧪",name:"Lab",cost:Config.BUILD_COSTS.lab,req:null},
             {id:"vein_miner",icon:"⛏️",name:"Vein Miner",cost:Config.BUILD_COSTS.vein_miner,req:"vein_mining"},
-            {id:"ore_synthesizer",icon:"🧬",name:"Ore Synth",cost:Config.BUILD_COSTS.ore_synthesizer,req:"ore_synthesis"}
+            {id:"ore_synthesizer",icon:"🧬",name:"Ore Synth",cost:Config.BUILD_COSTS.ore_synthesizer,req:"ore_synthesis"},
+            {id:"synthesizer",icon:"🔮",name:"Synthesizer",cost:Config.BUILD_COSTS.synthesizer,req:"deep_synthesis"}
         ];
         const del=document.createElement('button'); del.className='build-btn';
         del.innerHTML='<div class="build-icon" style="font-size:18px">🗑️</div><div class="build-name">Delete</div>';
@@ -4072,7 +4112,7 @@ class Game {
                         const _sx=msg.x+_DIRS4[_d][0], _sy=msg.y+_DIRS4[_d][1];
                         if (_sx<0||_sx>=Config.MAP_W||_sy<0||_sy>=Config.MAP_H) continue;
                         const _src=this.state.buildings[_sy]?.[_sx];
-                        if (_src && (_src.type==='mine'||_src.type==='vein_miner'||_src.type==='furnace'||_src.type==='assembler'||_src.type==='ore_synthesizer')) {
+                        if (_src && (_src.type==='mine'||_src.type==='vein_miner'||_src.type==='furnace'||_src.type==='assembler'||_src.type==='ore_synthesizer'||_src.type==='synthesizer')) {
                             const _od=_src.dir||0;
                             const _opx=_sx+_DIRS4[_od][0], _opy=_sy+_DIRS4[_od][1];
                             if (_opx===msg.x && _opy===msg.y) { _snapMatch=true; break; }
@@ -4490,6 +4530,7 @@ class Game {
                 if (t){const b=document.querySelector('.build-btn[data-id="'+t+'"]');if(b&&!b.classList.contains('locked')&&!b.classList.contains('disabled'))this.ui.selectTool(t);}
             }
             else if (k==='0'){const b=document.querySelector('.build-btn[data-id="ore_synthesizer"]');if(b&&!b.classList.contains('locked')&&!b.classList.contains('disabled'))this.ui.selectTool('ore_synthesizer');}
+            else if (k==='='){const b=document.querySelector('.build-btn[data-id="synthesizer"]');if(b&&!b.classList.contains('locked')&&!b.classList.contains('disabled'))this.ui.selectTool('synthesizer');}
         });
     }
     _updateBeltSeamMask(x, y) {
@@ -4573,13 +4614,14 @@ class Game {
             rows+='<div class="bip-row">Vein tiles: '+_vmTc+'</div>';
             rows+='<div class="bip-row">Ore remaining: '+_vmPct2+'%</div>';
         }
-        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer') {
+        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer'||b.type==='synthesizer') {
             const inv=Object.entries(b.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
             rows+='<div class="bip-row" id="bip-inv">Inventory: '+(inv||'empty')+'</div>';
         }
-        if (b.type==='assembler') {
+        if (b.type==='assembler'||b.type==='synthesizer') {
             const sel='background:#0f111a;border:1px solid var(--border);color:var(--text-active);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;cursor:pointer;margin-top:2px;';
-            const mkRecipeOpts=()=>Config.RECIPES.assembler.map(r=>{
+            const _bipRecipeType = b.type==='synthesizer' ? 'synthesizer' : 'assembler';
+            const mkRecipeOpts=()=>Config.RECIPES[_bipRecipeType].map(r=>{
                 const ing=Object.entries(r.in).map(([k,v])=>v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
                 return '<option value="'+r.out+'"'+(b.lockedRecipe===r.out?' selected':'')+'>'+r.out.replace(/_/g,' ')+' ('+ing+')</option>';
             }).join('');
@@ -4590,7 +4632,7 @@ class Game {
         }
         rows+='<div class="bip-row">Refund: <span style="color:var(--sell)">$'+Math.floor(cost*0.5)+'</span></div>';
         panel.innerHTML='<div class="bip-title">'+name+'</div>'+rows+'<button class="bip-delete" id="bip-del-btn">Delete (50% refund)</button>';
-        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer') this._bipOpen={x:tx,y:ty,type:b.type};
+        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer'||b.type==='synthesizer') this._bipOpen={x:tx,y:ty,type:b.type};
         else this._bipOpen=null;
         document.getElementById('bip-del-btn').onclick=()=>{
             this.worker.postMessage({type:'delete',x:tx,y:ty});
@@ -4605,7 +4647,7 @@ class Game {
             document.getElementById('bip-fL')?.addEventListener('change',applyF);
             document.getElementById('bip-fR')?.addEventListener('change',applyF);
         }
-        if (b.type==='assembler') {
+        if (b.type==='assembler'||b.type==='synthesizer') {
             document.getElementById('bip-recipe')?.addEventListener('change', e => {
                 const recipe = e.target.value || null;
                 b.lockedRecipe = recipe; // update stale snapshot for re-open
