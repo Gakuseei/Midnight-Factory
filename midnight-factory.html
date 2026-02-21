@@ -981,12 +981,14 @@ function tick(now) {
                         hoverData = "Output blocked \u2014 "+hb.outBuffer.replace(/_/g,' ')+" ready"+(inv?", "+inv:"");
                     } else if (inv && (hb.type==="assembler"||hb.type==="synthesizer")) {
                         // Find closest matching recipe to hint the player
-                        const _hintType = (hb.type === 'synthesizer') ? 'synthesizer' : 'assembler';
-                        const recipeHints = Config.RECIPES[_hintType].map(r => {
-                            const needs = Object.entries(r.in).filter(([k,v])=>(hb.inventory[k]||0)<v).map(([k,v])=>v+"\u00d7 "+k.replace(/_/g,' '));
-                            return { out: r.out, needs };
-                        }).filter(r => r.needs.length > 0 && r.needs.length <= 2);
-                        const best = recipeHints.sort((a,b)=>a.needs.length-b.needs.length)[0];
+                        var _hintType = (hb.type === 'synthesizer') ? 'synthesizer' : 'assembler';
+                        var _hintList = hb._lockedRecipeRef ? [hb._lockedRecipeRef] : Config.RECIPES[_hintType];
+                        var recipeHints = _hintList.map(function(r) {
+                            var needs = Object.entries(r.in).filter(function(e){ return (hb.inventory[e[0]]||0)<e[1]; }).map(function(e){ return e[1]+"\u00d7 "+e[0].replace(/_/g,' '); });
+                            var has = Object.keys(r.in).filter(function(k){ return (hb.inventory[k]||0)>=r.in[k]; }).length;
+                            return { out: r.out, needs: needs, has: has };
+                        }).filter(function(r){ return r.needs.length > 0 && r.needs.length <= 2; });
+                        var best = recipeHints.sort(function(a,b){ return a.needs.length-b.needs.length || b.has-a.has; })[0];
                         if (best) hoverData = "Needs "+best.needs.join(", ")+" \u2192 "+best.out.replace(/_/g,' ')+(inv?" (has: "+inv+")":"");
                         else hoverData = "Idle \u2014 "+(inv||'Empty');
                     } else {
