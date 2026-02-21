@@ -1751,15 +1751,36 @@ class Renderer {
                 const o = off.getContext('2d'); const c = resCfg.color;
                 o.translate(T/2+pad, T/2+pad);
                 if (type==='copper_ore') {
-                    // Copper-specific: chunky nuggets with warm tonal variation
+                    // Copper-specific: detailed nuggets with gradients, facets, highlights
                     const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
                     const nug=(ang,rad,ox,oy,hi)=>{
-                        o.beginPath();
                         const V=[[0.95,-0.25],[0.35,-0.90],[-0.75,-0.55],[-0.85,0.50],[0.45,0.85]];
                         const cs=Math.cos(ang),sn=Math.sin(ang);
-                        for(let j=0;j<5;j++){const vx=V[j][0]*rad,vy=V[j][1]*rad;const rx=ox+vx*cs-vy*sn;const ry=oy+vx*sn+vy*cs;if(j===0)o.moveTo(rx,ry);else o.lineTo(rx,ry);}
-                        o.closePath();o.fillStyle=hi?'#e0a888':c;o.fill();
-                        o.strokeStyle='rgba(255,210,170,0.35)';o.lineWidth=1;o.stroke();
+                        const pts=[];
+                        for(let j=0;j<5;j++){const vx=V[j][0]*rad,vy=V[j][1]*rad;pts.push([ox+vx*cs-vy*sn,oy+vx*sn+vy*cs]);}
+                        const mkPath=()=>{o.beginPath();for(let j=0;j<5;j++){if(j===0)o.moveTo(pts[j][0],pts[j][1]);else o.lineTo(pts[j][0],pts[j][1]);}o.closePath();};
+                        // Drop shadow
+                        o.fillStyle='rgba(40,18,8,0.3)';o.beginPath();
+                        for(let j=0;j<5;j++){if(j===0)o.moveTo(pts[j][0]+1.5,pts[j][1]+1.5);else o.lineTo(pts[j][0]+1.5,pts[j][1]+1.5);}
+                        o.closePath();o.fill();
+                        // Radial gradient body
+                        const grd=o.createRadialGradient(ox-rad*0.2,oy-rad*0.3,0,ox,oy,rad*1.1);
+                        grd.addColorStop(0,hi?'#f0c4a4':'#e8ad8a');grd.addColorStop(0.55,c);grd.addColorStop(1,'#9a6040');
+                        o.fillStyle=grd;mkPath();o.fill();
+                        // Dark outline
+                        o.strokeStyle='rgba(120,60,30,0.65)';o.lineWidth=1.2;o.stroke();
+                        // Highlight facet (upper-left)
+                        o.fillStyle='rgba(255,220,185,0.28)';o.beginPath();
+                        o.moveTo(pts[1][0],pts[1][1]);o.lineTo(pts[2][0],pts[2][1]);
+                        const mx=(pts[0][0]+pts[3][0])/2,my=(pts[0][1]+pts[3][1])/2;
+                        o.lineTo(mx,my);o.lineTo((pts[0][0]+pts[1][0])/2,(pts[0][1]+pts[1][1])/2);
+                        o.closePath();o.fill();
+                        // Inner facet line
+                        o.strokeStyle='rgba(155,90,50,0.4)';o.lineWidth=0.8;o.beginPath();
+                        o.moveTo((pts[1][0]+mx)/2,(pts[1][1]+my)/2);o.lineTo((pts[4][0]+mx)/2,(pts[4][1]+my)/2);o.stroke();
+                        // Specular highlight dot
+                        o.fillStyle='rgba(255,235,210,0.55)';o.beginPath();
+                        o.arc(ox-rad*0.15,oy-rad*0.2,rad*0.13,0,Math.PI*2);o.fill();
                     };
                     nug(a1,T*0.25,-T*0.1,-T*0.1,false);nug(a2,T*0.20,T*0.15,-T*0.05,true);nug(a3,T*0.22,0,T*0.15,false);
                     this.oreCache[type].push(off);
@@ -2182,20 +2203,56 @@ class Renderer {
                     }
                     ctx.fill(); ctx.shadowBlur=0;
                 } else if (_type==='copper_ore') {
-                    // Copper nuggets: irregular 5-vertex chunks + warm metallic stroke
-                    const _r2=T*0.2;
+                    // Copper nuggets: faceted mineral chunks with depth + metallic sheen
+                    const _r2=T*0.22;
+                    // Pass 1: drop shadow (offset +1,+1)
+                    ctx.fillStyle='rgba(60,25,10,0.35)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2]+1,_cy=_pts[_j*2+1]+1;
+                        ctx.moveTo(_cx+_r2*0.95,_cy-_r2*0.25);ctx.lineTo(_cx+_r2*0.35,_cy-_r2*0.90);
+                        ctx.lineTo(_cx-_r2*0.75,_cy-_r2*0.55);ctx.lineTo(_cx-_r2*0.85,_cy+_r2*0.50);
+                        ctx.lineTo(_cx+_r2*0.45,_cy+_r2*0.85);ctx.closePath();
+                    }
+                    ctx.fill();
+                    // Pass 2: main body
+                    ctx.fillStyle=_col;
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) {
                         const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
-                        ctx.moveTo(_cx+_r2*0.95,_cy-_r2*0.25);
-                        ctx.lineTo(_cx+_r2*0.35,_cy-_r2*0.90);
-                        ctx.lineTo(_cx-_r2*0.75,_cy-_r2*0.55);
-                        ctx.lineTo(_cx-_r2*0.85,_cy+_r2*0.50);
-                        ctx.lineTo(_cx+_r2*0.45,_cy+_r2*0.85);
-                        ctx.closePath();
+                        ctx.moveTo(_cx+_r2*0.95,_cy-_r2*0.25);ctx.lineTo(_cx+_r2*0.35,_cy-_r2*0.90);
+                        ctx.lineTo(_cx-_r2*0.75,_cy-_r2*0.55);ctx.lineTo(_cx-_r2*0.85,_cy+_r2*0.50);
+                        ctx.lineTo(_cx+_r2*0.45,_cy+_r2*0.85);ctx.closePath();
                     }
                     ctx.fill();
-                    ctx.strokeStyle='rgba(255,200,160,0.45)';ctx.lineWidth=1;ctx.stroke();
+                    // Pass 3: darker outline for definition
+                    ctx.strokeStyle='rgba(130,65,35,0.75)';ctx.lineWidth=1.5;ctx.stroke();
+                    // Pass 4: bright highlight facet (upper-left face)
+                    ctx.fillStyle='rgba(255,215,175,0.3)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        ctx.moveTo(_cx+_r2*0.35,_cy-_r2*0.90);ctx.lineTo(_cx-_r2*0.75,_cy-_r2*0.55);
+                        ctx.lineTo(_cx-_r2*0.1,_cy-_r2*0.1);ctx.lineTo(_cx+_r2*0.5,_cy-_r2*0.25);ctx.closePath();
+                    }
+                    ctx.fill();
+                    // Pass 5: inner facet lines (mineral cracks)
+                    ctx.strokeStyle='rgba(160,95,55,0.45)';ctx.lineWidth=0.7;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        ctx.moveTo(_cx-_r2*0.1,_cy-_r2*0.7);ctx.lineTo(_cx+_r2*0.15,_cy+_r2*0.45);
+                        ctx.moveTo(_cx-_r2*0.6,_cy+_r2*0.1);ctx.lineTo(_cx+_r2*0.55,_cy-_r2*0.05);
+                    }
+                    ctx.stroke();
+                    // Pass 6: specular highlight dots
+                    ctx.fillStyle='rgba(255,235,210,0.5)';
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.moveTo(_pts[_j*2]-_r2*0.15+_r2*0.1,_pts[_j*2+1]-_r2*0.25);
+                        ctx.arc(_pts[_j*2]-_r2*0.15,_pts[_j*2+1]-_r2*0.25,_r2*0.1,0,Math.PI*2);
+                    }
+                    ctx.fill();
                 } else {
                     // Octagons (most common: raw ores, brick, composite…)
                     const _r2=T*0.2;
