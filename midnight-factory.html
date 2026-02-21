@@ -1786,14 +1786,63 @@ class Renderer {
                     this.oreCache[type].push(off);
                     continue;
                 }
-                if (type==="gold_ore"||type==="crystal"||type==="silicon") { o.shadowColor=c; o.shadowBlur=15; }
-                const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
-                const dp=(ang,rad,ox,oy)=>{
-                    o.beginPath();
-                    for(let j=0;j<6;j++){const th=ang+(j/6)*Math.PI*2;const r=rad*(0.8+0.2*(j%2));const px=ox+Math.cos(th)*r;const py=oy+Math.sin(th)*r;if(j===0)o.moveTo(px,py);else o.lineTo(px,py);}
-                    o.closePath();o.fillStyle=c;o.fill();o.shadowBlur=0;o.strokeStyle="rgba(255,255,255,0.2)";o.lineWidth=1;o.stroke();
+                // Data-driven detailed nuggets for all remaining ores
+                const _oreTilePal={
+                    iron_ore:{v:[[0.90,-0.35],[0.25,-0.85],[-0.55,-0.70],[-0.85,0.20],[-0.30,0.80],[0.65,0.70]],gl:'#b8c8e0',gd:'#5a6a88',out:'rgba(60,75,110,0.65)',hi:'rgba(190,210,240,0.25)',fl:'rgba(90,110,145,0.4)',sp:'rgba(210,225,245,0.55)',sh:'rgba(20,30,50,0.3)'},
+                    coal:{v:[[0.80,-0.40],[0.0,-0.95],[-0.85,-0.30],[-0.50,0.75],[0.55,0.80]],gl:'#8a8a9a',gd:'#3a3a4a',out:'rgba(40,40,55,0.65)',hi:'rgba(120,120,145,0.2)',fl:'rgba(70,70,90,0.35)',sp:'rgba(150,150,170,0.35)',sh:'rgba(10,10,20,0.35)'},
+                    stone:{v:[[0.85,-0.10],[0.55,-0.70],[-0.10,-0.85],[-0.70,-0.55],[-0.85,0.25],[-0.30,0.80],[0.55,0.65]],gl:'#a0a0b0',gd:'#5a5a6a',out:'rgba(60,60,75,0.6)',hi:'rgba(155,155,175,0.2)',fl:'rgba(90,90,105,0.3)',sp:'rgba(175,175,195,0.4)',sh:'rgba(15,15,25,0.3)'},
+                    gold_ore:{v:[[0.90,-0.30],[0.30,-0.85],[-0.70,-0.60],[-0.80,0.55],[0.50,0.80]],gl:'#ffe070',gd:'#9a7020',out:'rgba(130,100,25,0.65)',hi:'rgba(255,230,140,0.3)',fl:'rgba(155,120,40,0.4)',sp:'rgba(255,245,200,0.6)',sh:'rgba(45,30,5,0.3)',gw:15},
+                    crystal:{v:[[0.0,-0.95],[-0.50,-0.20],[-0.30,0.85],[0.30,0.85],[0.50,-0.20]],gl:'#a0f5f5',gd:'#3a9898',out:'rgba(45,150,150,0.65)',hi:'rgba(175,250,250,0.3)',fl:'rgba(70,170,170,0.4)',sp:'rgba(225,255,255,0.6)',sh:'rgba(8,35,35,0.3)',gw:15},
+                    silicon:{v:[[0.85,0.0],[0.45,-0.75],[-0.45,-0.75],[-0.85,0.0],[-0.45,0.75],[0.45,0.75]],gl:'#a0d4e8',gd:'#4888a8',out:'rgba(55,120,150,0.6)',hi:'rgba(165,215,235,0.25)',fl:'rgba(80,140,170,0.35)',sp:'rgba(195,230,245,0.5)',sh:'rgba(12,30,45,0.3)',gw:15},
+                    titanium_ore:{v:[[0.85,-0.25],[0.15,-0.90],[-0.80,-0.45],[-0.65,0.65],[0.55,0.80]],gl:'#b0c0e0',gd:'#5878a0',out:'rgba(60,80,130,0.65)',hi:'rgba(175,195,230,0.25)',fl:'rgba(90,110,150,0.4)',sp:'rgba(195,215,240,0.5)',sh:'rgba(18,28,45,0.3)'},
+                    nebula_dust:{v:[[0.0,-0.90],[-0.25,-0.30],[-0.90,0.0],[-0.25,0.30],[0.0,0.90],[0.25,0.30],[0.90,0.0],[0.25,-0.30]],gl:'#e0a0f5',gd:'#8048a0',out:'rgba(130,60,160,0.6)',hi:'rgba(215,155,245,0.3)',fl:'rgba(150,90,180,0.35)',sp:'rgba(235,195,255,0.55)',sh:'rgba(30,12,45,0.3)',gw:15}
                 };
-                dp(a1,T*0.25,-T*0.1,-T*0.1); dp(a2,T*0.20,T*0.15,-T*0.05); dp(a3,T*0.22,0,T*0.15);
+                const _otp=_oreTilePal[type];
+                if (_otp) {
+                    const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
+                    const _V=_otp.v,_VN=_V.length;
+                    const nug=(ang,rad,ox,oy,hi)=>{
+                        const cs=Math.cos(ang),sn=Math.sin(ang);
+                        const pts=[];
+                        for(let j=0;j<_VN;j++){const vx=_V[j][0]*rad,vy=_V[j][1]*rad;pts.push([ox+vx*cs-vy*sn,oy+vx*sn+vy*cs]);}
+                        const mkP=()=>{o.beginPath();for(let j=0;j<_VN;j++){if(j===0)o.moveTo(pts[j][0],pts[j][1]);else o.lineTo(pts[j][0],pts[j][1]);}o.closePath();};
+                        // Drop shadow
+                        o.fillStyle=_otp.sh;o.beginPath();
+                        for(let j=0;j<_VN;j++){if(j===0)o.moveTo(pts[j][0]+1.5,pts[j][1]+1.5);else o.lineTo(pts[j][0]+1.5,pts[j][1]+1.5);}
+                        o.closePath();o.fill();
+                        // Glow
+                        if(_otp.gw){o.shadowColor=c;o.shadowBlur=_otp.gw;}
+                        // Radial gradient body
+                        const grd=o.createRadialGradient(ox-rad*0.2,oy-rad*0.3,0,ox,oy,rad*1.1);
+                        grd.addColorStop(0,hi?_otp.gl:c);grd.addColorStop(0.55,c);grd.addColorStop(1,_otp.gd);
+                        o.fillStyle=grd;mkP();o.fill();
+                        if(_otp.gw)o.shadowBlur=0;
+                        // Dark outline
+                        o.strokeStyle=_otp.out;o.lineWidth=1.2;o.stroke();
+                        // Highlight facet
+                        o.fillStyle=_otp.hi;o.beginPath();
+                        o.moveTo(pts[1%_VN][0],pts[1%_VN][1]);o.lineTo(pts[2%_VN][0],pts[2%_VN][1]);
+                        const mx=(pts[0][0]+pts[Math.min(3,_VN-1)][0])/2,my=(pts[0][1]+pts[Math.min(3,_VN-1)][1])/2;
+                        o.lineTo(mx,my);o.lineTo((pts[0][0]+pts[1%_VN][0])/2,(pts[0][1]+pts[1%_VN][1])/2);
+                        o.closePath();o.fill();
+                        // Inner facet line
+                        o.strokeStyle=_otp.fl;o.lineWidth=0.8;o.beginPath();
+                        o.moveTo((pts[1%_VN][0]+mx)/2,(pts[1%_VN][1]+my)/2);o.lineTo((pts[_VN-1][0]+mx)/2,(pts[_VN-1][1]+my)/2);o.stroke();
+                        // Specular dot
+                        o.fillStyle=_otp.sp;o.beginPath();
+                        o.arc(ox-rad*0.15,oy-rad*0.2,rad*0.13,0,Math.PI*2);o.fill();
+                    };
+                    nug(a1,T*0.25,-T*0.1,-T*0.1,false);nug(a2,T*0.20,T*0.15,-T*0.05,true);nug(a3,T*0.22,0,T*0.15,false);
+                } else {
+                    // Fallback: generic hex blobs for any future ore types
+                    const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
+                    const dp=(ang,rad,ox,oy)=>{
+                        o.beginPath();
+                        for(let j=0;j<6;j++){const th=ang+(j/6)*Math.PI*2;const r=rad*(0.8+0.2*(j%2));const px=ox+Math.cos(th)*r;const py=oy+Math.sin(th)*r;if(j===0)o.moveTo(px,py);else o.lineTo(px,py);}
+                        o.closePath();o.fillStyle=c;o.fill();o.strokeStyle="rgba(255,255,255,0.2)";o.lineWidth=1;o.stroke();
+                    };
+                    dp(a1,T*0.25,-T*0.1,-T*0.1); dp(a2,T*0.20,T*0.15,-T*0.05); dp(a3,T*0.22,0,T*0.15);
+                }
                 this.oreCache[type].push(off);
             }
         }
