@@ -2151,34 +2151,33 @@ class Renderer {
                 const _n=_pts.length>>1;
                 ctx.fillStyle=_col;
                 if (_type==='copper_bar') {
-                    // Copper bar: ingot with depth, beveled highlight, shadow
+                    // Copper bar: ingot with vertical gradient, shadow, specular dot
                     const _bw=T*0.4,_bh=T*0.2;
                     // Drop shadow
                     ctx.fillStyle='rgba(60,25,10,0.35)';
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]-_bh/2+1,_bw,_bh);
                     ctx.fill();
-                    // Main body
-                    ctx.fillStyle=_col;
+                    // Main body per item (gradient needs unique y)
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        const _grd=ctx.createLinearGradient(0,_cy-_bh/2,0,_cy+_bh/2);
+                        _grd.addColorStop(0,'#f8caa8');_grd.addColorStop(0.45,_col);_grd.addColorStop(1,'#9a5e38');
+                        ctx.fillStyle=_grd;
+                        ctx.fillRect(_cx-_bw/2,_cy-_bh/2,_bw,_bh);
+                    }
+                    // Dark outline (batch)
+                    ctx.strokeStyle='rgba(120,58,30,0.7)';ctx.lineWidth=1.5;
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2,_pts[_j*2+1]-_bh/2,_bw,_bh);
-                    ctx.fill();
-                    // Dark outline
-                    ctx.strokeStyle='rgba(130,65,35,0.7)';ctx.lineWidth=1.5;ctx.stroke();
-                    // Top highlight bevel (upper strip)
-                    ctx.fillStyle='rgba(255,215,175,0.3)';
+                    ctx.stroke();
+                    // Specular dot (top-left)
+                    ctx.fillStyle='rgba(255,235,210,0.5)';
                     ctx.beginPath();
-                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]-_bh/2,_bw-2,_bh*0.35);
-                    ctx.fill();
-                    // Bottom darker bevel
-                    ctx.fillStyle='rgba(80,35,15,0.25)';
-                    ctx.beginPath();
-                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]+_bh*0.15,_bw-2,_bh*0.35);
-                    ctx.fill();
-                    // Specular highlight streak
-                    ctx.fillStyle='rgba(255,235,210,0.4)';
-                    ctx.beginPath();
-                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw*0.2,_pts[_j*2+1]-_bh/2+1,_bw*0.25,_bh*0.25);
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.moveTo(_pts[_j*2]-_bw*0.18+1.2,_pts[_j*2+1]-_bh*0.15);
+                        ctx.arc(_pts[_j*2]-_bw*0.18,_pts[_j*2+1]-_bh*0.15,1.2,0,Math.PI*2);
+                    }
                     ctx.fill();
                 } else if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
                     // Bars / ingots: batch as rects
