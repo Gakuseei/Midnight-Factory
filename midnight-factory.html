@@ -676,6 +676,13 @@ self.onmessage = function(e) {
                 scheduleEmitSave();
             }
             break;
+        case 'set_ore_synth_filter':
+            if (state.buildings[msg.y]&&state.buildings[msg.y][msg.x]&&state.buildings[msg.y][msg.x].type==='ore_synthesizer') {
+                state.buildings[msg.y][msg.x].synthOre = msg.oreType||null;
+                postMessage({type:'ore_synth_filter_set',x:msg.x,y:msg.y,oreType:msg.oreType||null});
+                scheduleEmitSave();
+            }
+            break;
     }
 };
 
@@ -731,6 +738,9 @@ function tryPlace(x, y, type, dir) {
         for (var _vi = 0; _vi < _vTiles.length; _vi++) _vTotal += state.oreAmounts[_vTiles[_vi].y][_vTiles[_vi].x];
         b.initialOre = _vTotal;
         b.remainingOre = _vTotal;
+    }
+    if (type==="ore_synthesizer") {
+        b.synthOre = null;
     }
     state.buildings[y][x] = b;
     state.activeBuildings.push({ x, y, b });
@@ -885,6 +895,10 @@ function tick(now) {
                         }
                     }
                 } else if (_phb.type==="seller") { _pauseHover = "Sold: $"+_phb.totalSold;
+                } else if (_phb.type==="ore_synthesizer") {
+                    var _posOre = _phb.synthOre ? _phb.synthOre.replace(/_/g,' ') : "None selected";
+                    var _posEC = _phb.inventory.energy_cell || 0;
+                    _pauseHover = "Ore Synth: " + _posOre + " \u2014 " + _posEC + " cells";
                 } else if (_phb.type.startsWith("belt")||_phb.type==="splitter"||_phb.type==="merger"||_phb.type==="tunnel_in"||_phb.type==="tunnel_out") {
                     var _pphh=passHistoryMap.get(hoverY+","+hoverX);
                     var _pcnt30=0;
@@ -960,6 +974,10 @@ function tick(now) {
                     }
                 }
             } else if (hb.type==="seller") { hoverData = "Sold: $"+hb.totalSold;
+            } else if (hb.type==="ore_synthesizer") {
+                var _osOre = hb.synthOre ? hb.synthOre.replace(/_/g,' ') : "None selected";
+                var _osEC = hb.inventory.energy_cell || 0;
+                hoverData = "Ore Synth: " + _osOre + " \u2014 " + _osEC + " cells";
             } else if (hb.type.startsWith("belt")||hb.type==="splitter"||hb.type==="merger"||hb.type==="tunnel_in"||hb.type==="tunnel_out") {
                 const _phh=passHistoryMap.get(hoverY+","+hoverX);
                 let _cnt30=0;
@@ -1037,6 +1055,8 @@ function tick(now) {
                 buildingStats[bk] = { totalSold: ab.b.totalSold };
             } else if (ab.b.type.startsWith('belt') || ab.b.type === 'splitter' || ab.b.type === 'merger' || ab.b.type === 'tunnel_in' || ab.b.type === 'tunnel_out') {
                 buildingStats[bk] = { itemsPassed: ab.b.itemsPassed };
+            } else if (ab.b.type === 'ore_synthesizer') {
+                buildingStats[bk] = { inventory: Object.assign({}, ab.b.inventory), crafting: ab.b.synthOre||null };
             } else if (ab.b.type === 'furnace' || ab.b.type === 'assembler') {
                 buildingStats[bk] = { inventory: Object.assign({}, ab.b.inventory), crafting: ab.b.crafting||null };
             }
@@ -1125,6 +1145,10 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('lab_speed')) val*=1.5;
                         if (state.unlockedTechs.has('prestige_3')) val*=3;
                         if (val>0) { state.rp+=val; postMessage({type:'rp_gain',x:it.tx,y:it.ty,val:val}); }
+                        state.items[i] = state.items[state.items.length - 1]; state.items.length--;
+                        _BC[it.y*Config.MAP_W+it.x]--;
+                    } else if (b.type==="ore_synthesizer") {
+                        if (it.type==='energy_cell') { b.inventory[it.type]=(b.inventory[it.type]||0)+1; }
                         state.items[i] = state.items[state.items.length - 1]; state.items.length--;
                         _BC[it.y*Config.MAP_W+it.x]--;
                     } else if (b.type==="furnace"||b.type==="assembler") {
@@ -1220,7 +1244,20 @@ function updateSimulation(dt) {
                 b.timer = 0;
             }
         } else if (b.type==="furnace") { processRecipe(b,"furnace",dt);
-        } else if (b.type==="assembler") { processRecipe(b,"assembler",dt); }
+        } else if (b.type==="assembler") { processRecipe(b,"assembler",dt);
+        } else if (b.type==="ore_synthesizer") {
+            if (!b.outBuffer && b.synthOre && (b.inventory.energy_cell||0) >= 1) {
+                b.timer += dt;
+                b.idleTimer = 0;
+                if (b.timer >= 4000) {
+                    b.inventory.energy_cell -= 1;
+                    b.outBuffer = b.synthOre;
+                    b.timer = 0;
+                }
+            } else if (!b.synthOre || (b.inventory.energy_cell||0) < 1) {
+                b.idleTimer = (b.idleTimer||0) + dt;
+            }
+        }
 
         if (b.type.startsWith("belt")) {
             for (const it of (_arrivedAtMap.get(y*Config.MAP_W+x)||[]))
@@ -1413,7 +1450,7 @@ function pushItem(x,y,b,it) {
         if (tb&&_TC[_bci]<_tcMax&&_BC[_bci]<Config.BELT_CAPACITY) {
             if (tb.type.startsWith("belt")||tb.type==="splitter"||tb.type==="merger"||
                 tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||
-                tb.type==="tunnel_in"||tb.type==="tunnel_out") {
+                tb.type==="ore_synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") {
                 if (tb.type.startsWith("belt")||tb.type==="tunnel_in"||tb.type==="tunnel_out") { if (outDir===((tb.dir+2)%4)) return; }
                 if (tb.type==="splitter") { if (outDir!==tb.dir) return; }
                 if (tb.type==="merger") { if (x===tx+DIRS[tb.dir][0]&&y===ty+DIRS[tb.dir][1]) return; }
@@ -1426,7 +1463,7 @@ function pushItem(x,y,b,it) {
                 const _ph=passHistoryMap.get(phk);
                 _ph.buf[_ph.head]=_nowRT; _ph.head=(_ph.head+1)%200; if(_ph.len<200)_ph.len++;
                 if (tb.type==="merger") it.fromDir=outDir;
-                if (tb.type==="splitter"||tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||tb.type==="tunnel_in"||tb.type==="tunnel_out") it.lane=0;
+                if (tb.type==="splitter"||tb.type==="furnace"||tb.type==="assembler"||tb.type==="lab"||tb.type==="seller"||tb.type==="ore_synthesizer"||tb.type==="tunnel_in"||tb.type==="tunnel_out") it.lane=0;
                 if (b.type==="merger") b.rrIndex=(b.rrIndex+1)%2;
                 if (flip) b.rrIndex=(b.rrIndex+1)%2;
                 return true;
@@ -2151,7 +2188,7 @@ class Renderer {
         if (uiState.hoverTile && !uiState.skillTreeOpen && (!uiState.selectedTool || uiState.selectedTool==='delete')) {
             const _ohx=uiState.hoverTile.x, _ohy=uiState.hoverTile.y;
             const _ob=state.buildings&&state.buildings[_ohy]&&state.buildings[_ohy][_ohx];
-            if (_ob && (_ob.type==='furnace'||_ob.type==='assembler')) {
+            if (_ob && (_ob.type==='furnace'||_ob.type==='assembler'||_ob.type==='ore_synthesizer')) {
                 const _inv3=_ob.inventory||{};
                 const _ents=Object.entries(_inv3).filter(([,v])=>v>0);
                 if (_ents.length>0) {
@@ -2462,6 +2499,29 @@ class Renderer {
                 });
             }
 
+        } else if (b.type==="ore_synthesizer") {
+            const _osGrad = ctx.createRadialGradient(0, -hh*0.25, hh*0.08, 0, 0, hh);
+            _osGrad.addColorStop(0, '#3a6a4a');
+            _osGrad.addColorStop(1, '#1c3b2c');
+            ctx.fillStyle = _osGrad;
+            ctx.strokeStyle = 'rgba(120,200,160,0.45)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(-hh, -hh, sz, sz, 5); ctx.fill(); ctx.stroke();
+            const _osOreType = b.synthOre;
+            const _osOrbColor = _osOreType ? (Config.RESOURCES[_osOreType]?.color || '#90e890') : '#90e890';
+            if (Q >= 1) {
+                const _osPulse = 0.5 + 0.5 * Math.sin(this.time * 0.004);
+                ctx.globalAlpha = 0.6 + _osPulse * 0.4;
+                ctx.fillStyle = _osOrbColor;
+                ctx.beginPath(); ctx.arc(0, 0, hh * 0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            ctx.fillStyle = 'rgba(120,200,160,0.85)';
+            ctx.beginPath();
+            ctx.moveTo(0, -hh * 0.73);
+            ctx.lineTo(-hh * 0.16, -hh * 0.53);
+            ctx.lineTo(hh * 0.16, -hh * 0.53);
+            ctx.closePath(); ctx.fill();
         } else if (b.type==="furnace") {
             ctx.fillStyle=Config.COLORS.furnace; ctx.fillRect(-hh,-hh,sz,sz);
             if (Q >= 1) {
@@ -3409,7 +3469,8 @@ class UI {
             {id:"belt3",icon:"⇶",name:"Exp. Belt",cost:Config.BUILD_COSTS.belt3,req:"express_belts"},
             {id:"assembler",icon:"⚙️",name:"Assembler",cost:Config.BUILD_COSTS.assembler,req:"steel_prod"},
             {id:"lab",icon:"🧪",name:"Lab",cost:Config.BUILD_COSTS.lab,req:null},
-            {id:"vein_miner",icon:"⛏️",name:"Vein Miner",cost:Config.BUILD_COSTS.vein_miner,req:"vein_mining"}
+            {id:"vein_miner",icon:"⛏️",name:"Vein Miner",cost:Config.BUILD_COSTS.vein_miner,req:"vein_mining"},
+            {id:"ore_synthesizer",icon:"🧬",name:"Ore Synth",cost:Config.BUILD_COSTS.ore_synthesizer,req:"ore_synthesis"}
         ];
         const del=document.createElement('button'); del.className='build-btn';
         del.innerHTML='<div class="build-icon" style="font-size:18px">🗑️</div><div class="build-name">Delete</div>';
@@ -4011,7 +4072,7 @@ class Game {
                         const _sx=msg.x+_DIRS4[_d][0], _sy=msg.y+_DIRS4[_d][1];
                         if (_sx<0||_sx>=Config.MAP_W||_sy<0||_sy>=Config.MAP_H) continue;
                         const _src=this.state.buildings[_sy]?.[_sx];
-                        if (_src && (_src.type==='mine'||_src.type==='vein_miner'||_src.type==='furnace'||_src.type==='assembler')) {
+                        if (_src && (_src.type==='mine'||_src.type==='vein_miner'||_src.type==='furnace'||_src.type==='assembler'||_src.type==='ore_synthesizer')) {
                             const _od=_src.dir||0;
                             const _opx=_sx+_DIRS4[_od][0], _opy=_sy+_DIRS4[_od][1];
                             if (_opx===msg.x && _opy===msg.y) { _snapMatch=true; break; }
@@ -4117,6 +4178,9 @@ class Game {
             } else if (msg.type==='filter_set') {
                 const _fb=this.state.buildings[msg.y]?.[msg.x];
                 if (_fb) { _fb.filterL=msg.filterL; _fb.filterR=msg.filterR; }
+            } else if (msg.type==='ore_synth_filter_set') {
+                const _osb=this.state.buildings[msg.y]?.[msg.x];
+                if (_osb) _osb.synthOre=msg.oreType;
             }
         };
     }
@@ -4425,6 +4489,7 @@ class Game {
                 const t=tools[parseInt(e.key)-1];
                 if (t){const b=document.querySelector('.build-btn[data-id="'+t+'"]');if(b&&!b.classList.contains('locked')&&!b.classList.contains('disabled'))this.ui.selectTool(t);}
             }
+            else if (k==='0'){const b=document.querySelector('.build-btn[data-id="ore_synthesizer"]');if(b&&!b.classList.contains('locked')&&!b.classList.contains('disabled'))this.ui.selectTool('ore_synthesizer');}
         });
     }
     _updateBeltSeamMask(x, y) {
@@ -4461,6 +4526,14 @@ class Game {
             const _so='background:#0f111a;border:1px solid var(--border);color:var(--text-active);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;cursor:pointer;margin-top:2px;';
             const _opts=_rk.map(r=>'<option value="'+r+'"'+(b.sellerFilter===r?' selected':'')+'>'+r.replace(/_/g,' ')+'</option>').join('');
             rows+='<div class="bip-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:6px 0 2px;"><span style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Accept Only</span><select id="bip-sell-filter" style="'+_so+'"><option value="">-- All items --</option>'+_opts+'</select></div>';
+        }
+        if (b.type==='ore_synthesizer') {
+            var _osEC2 = b.inventory?.energy_cell || 0;
+            rows+='<div class="bip-row">Energy Cells: '+_osEC2+'</div>';
+            var _baseOres = ['iron_ore','copper_ore','coal','stone'];
+            var _osSel = 'background:#0f111a;border:1px solid var(--border);color:var(--text-active);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;cursor:pointer;margin-top:2px;';
+            var _osOpts = _baseOres.map(function(r){return '<option value="'+r+'"'+(b.synthOre===r?' selected':'')+'>'+r.replace(/_/g,' ')+'</option>';}).join('');
+            rows+='<div class="bip-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:6px 0 2px;"><span style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Output Ore</span><select id="bip-os-filter" style="'+_osSel+'"><option value="">-- Select ore --</option>'+_osOpts+'</select></div>';
         }
         if (b.type.startsWith('belt')||b.type==='splitter'||b.type==='merger'||b.type==='tunnel_in'||b.type==='tunnel_out') rows+='<div class="bip-row">Items passed: '+(b.itemsPassed||0)+'</div>';
         if (b.type.startsWith('belt')) {
@@ -4500,7 +4573,7 @@ class Game {
             rows+='<div class="bip-row">Vein tiles: '+_vmTc+'</div>';
             rows+='<div class="bip-row">Ore remaining: '+_vmPct2+'%</div>';
         }
-        if (b.type==='furnace'||b.type==='assembler') {
+        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer') {
             const inv=Object.entries(b.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
             rows+='<div class="bip-row" id="bip-inv">Inventory: '+(inv||'empty')+'</div>';
         }
@@ -4517,7 +4590,7 @@ class Game {
         }
         rows+='<div class="bip-row">Refund: <span style="color:var(--sell)">$'+Math.floor(cost*0.5)+'</span></div>';
         panel.innerHTML='<div class="bip-title">'+name+'</div>'+rows+'<button class="bip-delete" id="bip-del-btn">Delete (50% refund)</button>';
-        if (b.type==='furnace'||b.type==='assembler') this._bipOpen={x:tx,y:ty,type:b.type};
+        if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer') this._bipOpen={x:tx,y:ty,type:b.type};
         else this._bipOpen=null;
         document.getElementById('bip-del-btn').onclick=()=>{
             this.worker.postMessage({type:'delete',x:tx,y:ty});
@@ -4544,6 +4617,13 @@ class Game {
                 const item = e.target.value || null;
                 b.sellerFilter = item;
                 this.worker.postMessage({type:'set_seller_filter', x:tx, y:ty, item});
+            });
+        }
+        if (b.type==='ore_synthesizer') {
+            document.getElementById('bip-os-filter')?.addEventListener('change', e => {
+                const oreType = e.target.value || null;
+                b.synthOre = oreType;
+                this.worker.postMessage({type:'set_ore_synth_filter', x:tx, y:ty, oreType});
             });
         }
         const _ctEl = document.getElementById('bip-colortag');
