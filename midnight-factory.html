@@ -245,7 +245,7 @@ kbd.shortcut-key {
 /* Ingredient rows */
 .rc-ingredients { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
 .rc-ing { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text); font-family: Quicksand,sans-serif; }
-.rc-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.rc-dot { flex-shrink: 0; }
 .rc-amt { color: var(--text-dim); font-size: 11px; font-family: "Fira Code",monospace; min-width: 18px; }
 /* Divider arrow */
 .rc-divider { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
@@ -4290,9 +4290,8 @@ class UI {
             const secs=(r.time/1000).toFixed(1);
             let ings='';
             for (const [res,amt] of Object.entries(r.in)) {
-                const c=Config.RESOURCES[res]?.color||'#aaa';
                 ings+='<div class="rc-ing">'
-                    +'<span class="rc-dot" style="background:'+c+';box-shadow:0 0 5px '+c+'66"></span>'
+                    +'<span class="rc-dot" style="'+itemDotStyle(res,12)+'"></span>'
                     +'<span class="rc-amt">'+amt+'×</span>'
                     +'<span>'+res.replace(/_/g,' ')+'</span>'
                     +'</div>';
@@ -4301,7 +4300,7 @@ class UI {
                 +'<div class="rc-ingredients">'+ings+'</div>'
                 +'<div class="rc-divider"><div class="rc-line"></div><span class="rc-arrow">▼</span><div class="rc-line"></div></div>'
                 +'<div class="rc-out">'
-                +'<span class="rc-dot" style="background:'+oc+';box-shadow:0 0 7px '+oc+'"></span>'
+                +'<span class="rc-dot" style="'+itemDotStyle(r.out,14)+'"></span>'
                 +'<span class="rc-out-name">'+r.out.replace(/_/g,' ')+'</span>'
                 +'<span class="rc-badge rc-badge-time">'+secs+'s</span>'
                 +'<span class="rc-badge rc-badge-val">$'+val+'</span>'
