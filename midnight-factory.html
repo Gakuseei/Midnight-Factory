@@ -430,6 +430,7 @@ const _arrivedAtMap = new Map();
 const _arrivedArrayPool = []; // pool of reusable arrays — avoids per-tick allocation
 let _nowRT = 0;
 const DEEP_ORES = ['gold_ore','crystal','silicon'];
+const EXOTIC_ORES = ['titanium_ore','nebula_dust'];
 // Pre-build resource key index for efficient Float32Array encoding
 const _RKEYS = Object.keys(Config.RESOURCES);
 const _rKeyIdx = {};
@@ -529,6 +530,31 @@ function generateMap(seedStr) {
     for (let y = cy-2; y <= cy+2; y++)
         for (let x = cx-2; x <= cx+2; x++)
             if (y>=0 && y<MH && x>=0 && x<MW) state.map[y][x] = null;
+
+    // Exotic ores: 35 veins near map edges (separate RNG pass preserves existing map)
+    var _exoticRes = ['titanium_ore','nebula_dust'];
+    var _exoticWeights = [65, 35];
+    for (var _ei = 0; _ei < 35; _ei++) {
+        var _eRoll = rng() * 100;
+        var _eRes = _eRoll < _exoticWeights[0] ? _exoticRes[0] : _exoticRes[1];
+        // Edge-biased: centroid within 40 tiles of map border
+        var _eSide = Math.floor(rng() * 4);
+        var _eCx, _eCy;
+        if (_eSide === 0) { _eCx = 5 + Math.floor(rng() * (MW - 10)); _eCy = 5 + Math.floor(rng() * 35); }
+        else if (_eSide === 1) { _eCx = 5 + Math.floor(rng() * (MW - 10)); _eCy = MH - 5 - Math.floor(rng() * 35); }
+        else if (_eSide === 2) { _eCx = 5 + Math.floor(rng() * 35); _eCy = 5 + Math.floor(rng() * (MH - 10)); }
+        else { _eCx = MW - 5 - Math.floor(rng() * 35); _eCy = 5 + Math.floor(rng() * (MH - 10)); }
+        var _eSteps = _eRes === 'nebula_dust' ? (3 + Math.floor(rng() * 6)) : (6 + Math.floor(rng() * 13));
+        var _eTx = _eCx, _eTy = _eCy;
+        for (var _es = 0; _es < _eSteps; _es++) {
+            if (_eTx >= 2 && _eTx < MW-2 && _eTy >= 2 && _eTy < MH-2) {
+                state.map[_eTy][_eTx] = _eRes; state.oreAmounts[_eTy][_eTx] += 200;
+                if (rng() > 0.5) { state.map[_eTy+1][_eTx] = _eRes; state.oreAmounts[_eTy+1][_eTx] += 200; }
+                if (rng() > 0.5) { state.map[_eTy][_eTx+1] = _eRes; state.oreAmounts[_eTy][_eTx+1] += 200; }
+            }
+            _eTx += Math.floor(rng() * 3) - 1; _eTy += Math.floor(rng() * 3) - 1;
+        }
+    }
 
     state._initStartX = cx; state._initStartY = cy;
 }
@@ -664,8 +690,14 @@ function tryPlace(x, y, type, dir) {
     if (type==="mine" && DEEP_ORES.includes(state.map[y][x]) && !state.unlockedTechs.has('deep_mining')) {
         postMessage({type:'place_failed',x,y,reason:'locked_ore'}); return;
     }
+    if (type==="mine" && EXOTIC_ORES.indexOf(state.map[y][x])!==-1 && !state.unlockedTechs.has('exotic_mining')) {
+        postMessage({type:'place_failed',x,y,reason:'locked_ore'}); return;
+    }
     if (type==="vein_miner" && !state.map[y][x]) { postMessage({type:'place_failed',x,y,reason:'no_ore'}); return; }
     if (type==="vein_miner" && DEEP_ORES.includes(state.map[y][x]) && !state.unlockedTechs.has('deep_mining')) {
+        postMessage({type:'place_failed',x,y,reason:'locked_ore'}); return;
+    }
+    if (type==="vein_miner" && EXOTIC_ORES.indexOf(state.map[y][x])!==-1 && !state.unlockedTechs.has('exotic_mining')) {
         postMessage({type:'place_failed',x,y,reason:'locked_ore'}); return;
     }
     state.money -= cost;
@@ -868,8 +900,11 @@ function tick(now) {
                 if (_pore2) {
                     var _pamt2 = state.oreAmounts[hoverY]?state.oreAmounts[hoverY][hoverX]:0;
                     var _pisDeep = DEEP_ORES.includes(_pore2);
+                    var _pisExotic = EXOTIC_ORES.indexOf(_pore2)!==-1;
                     if (_pisDeep && !state.unlockedTechs.has('deep_mining'))
                         _pauseHover = _pore2.replace(/_/g,' ')+" \u2014 Requires Deep Mining skill";
+                    else if (_pisExotic && !state.unlockedTechs.has('exotic_mining'))
+                        _pauseHover = _pore2.replace(/_/g,' ')+" \u2014 Requires Exotic Mining skill";
                     else
                         _pauseHover = _pore2.replace(/_/g,' ')+" \u2014 "+_pamt2;
                 }
@@ -940,8 +975,11 @@ function tick(now) {
             if (ore) {
                 const amt = state.oreAmounts[hoverY]?state.oreAmounts[hoverY][hoverX]:0;
                 const isDeep = DEEP_ORES.includes(ore);
+                const isExotic = EXOTIC_ORES.indexOf(ore)!==-1;
                 if (isDeep && !state.unlockedTechs.has('deep_mining'))
                     hoverData = ore.replace(/_/g,' ')+" \u2014 Requires Deep Mining skill";
+                else if (isExotic && !state.unlockedTechs.has('exotic_mining'))
+                    hoverData = ore.replace(/_/g,' ')+" \u2014 Requires Exotic Mining skill";
                 else
                     hoverData = ore.replace(/_/g,' ')+" \u2014 "+amt;
             }
@@ -1437,9 +1475,11 @@ const Config = {
         splitter:"#4a4a7a", merger:"#4a6a6a",
         tunnel:"#2a2a3a", tunnelGlow:"rgba(100,140,220,0.3)",
         seller:"#3a5a3a", sellerGlow:"rgba(133,184,143,0.4)",
-        vein_miner:"#5a7a4a", vein_minerGlow:"rgba(120,170,100,0.4)"
+        vein_miner:"#5a7a4a", vein_minerGlow:"rgba(120,170,100,0.4)",
+        ore_synthesizer:"#4a6a5a", ore_synthesizerGlow:"rgba(120,200,160,0.4)",
+        synthesizer:"#4a3a6a", synthesizerGlow:"rgba(180,140,255,0.4)"
     },
-    ORE_ABBR: { iron_ore:"Fe", copper_ore:"Cu", coal:"C", stone:"St", gold_ore:"Au", crystal:"Cr", silicon:"Si" },
+    ORE_ABBR: { iron_ore:"Fe", copper_ore:"Cu", coal:"C", stone:"St", gold_ore:"Au", crystal:"Cr", silicon:"Si", titanium_ore:"Ti", nebula_dust:"Nb" },
     RESOURCES: {
         iron_ore:{color:"#8a9bb8",value:2,rp:0}, copper_ore:{color:"#d4957a",value:2,rp:0},
         coal:{color:"#6a6a7a",value:1,rp:0}, stone:{color:"#8a8a9a",value:1,rp:0},
@@ -1454,7 +1494,15 @@ const Config = {
         processor:{color:"#9a48c2",value:280,rp:100}, energy_cell:{color:"#f0a820",value:500,rp:150},
         quantum_core:{color:"#e0d0ff",value:1500,rp:500},
         refined_coal:{color:"#8a8aaa",value:12,rp:4},
-        composite:{color:"#707088",value:55,rp:15}
+        composite:{color:"#707088",value:55,rp:15},
+        titanium_ore:{color:"#8aa0c8",value:20,rp:8},
+        nebula_dust:{color:"#c87adf",value:40,rp:18},
+        titanium_bar:{color:"#a0b8e0",value:50,rp:18},
+        nebula_crystal:{color:"#d8a0f0",value:100,rp:35},
+        titan_alloy:{color:"#90a8d0",value:120,rp:40},
+        plasma_coil:{color:"#e0a0ff",value:350,rp:120},
+        quantum_lattice:{color:"#b8c8ff",value:800,rp:250},
+        singularity_shard:{color:"#f0e0ff",value:5000,rp:1500}
     },
     RECIPES: {
         furnace: [
@@ -1463,7 +1511,9 @@ const Config = {
             {in:{stone:1},out:"brick",time:1600},
             {in:{gold_ore:1},out:"gold_ingot",time:2400},
             {in:{silicon:1},out:"silicon_wafer",time:2000},
-            {in:{coal:2},out:"refined_coal",time:2000}
+            {in:{coal:2},out:"refined_coal",time:2000},
+            {in:{titanium_ore:1},out:"titanium_bar",time:3000},
+            {in:{nebula_dust:2},out:"nebula_crystal",time:4000}
         ],
         assembler: [
             {in:{iron_bar:1,coal:1},out:"steel",time:3000},
@@ -1475,10 +1525,16 @@ const Config = {
             {in:{alloy:1,nano_chip:1},out:"energy_cell",time:8000},
             {in:{processor:2,crystal:5},out:"quantum_core",time:10000},
             {in:{brick:2,refined_coal:1},out:"composite",time:4000},
-            {in:{composite:1,iron_bar:1},out:"alloy",time:3000}
+            {in:{composite:1,iron_bar:1},out:"alloy",time:3000},
+            {in:{titanium_bar:2,steel:1},out:"titan_alloy",time:5000},
+            {in:{nebula_crystal:1,energy_cell:1},out:"plasma_coil",time:7000},
+            {in:{quantum_core:1,titan_alloy:2},out:"quantum_lattice",time:8000}
+        ],
+        synthesizer: [
+            {in:{quantum_lattice:1,plasma_coil:2},out:"singularity_shard",time:15000}
         ]
     },
-    BUILD_COSTS: { mine:10, belt:2, belt2:10, belt3:30, furnace:25, assembler:150, lab:300, splitter:15, merger:15, seller:20, tunnel_in:20, tunnel_out:20, vein_miner:75 },
+    BUILD_COSTS: { mine:10, belt:2, belt2:10, belt3:30, furnace:25, assembler:150, lab:300, splitter:15, merger:15, seller:20, tunnel_in:20, tunnel_out:20, vein_miner:75, ore_synthesizer:1500, synthesizer:2000 },
     MILESTONES: [
         {id:'first_500',money:500,text:'$500 — factory warming up!'},
         {id:'first_5k',money:5000,text:'$5,000 — real momentum building!'},
@@ -1491,7 +1547,14 @@ const Config = {
         {id:'circuit_sold',statType:'circuit',statVal:1,text:'First circuit assembled. Technology awakens.'},
         {id:'processor_sold',statType:'processor',statVal:1,text:'Processor online. The singularity approaches.'},
         {id:'energy_sold',statType:'energy_cell',statVal:1,text:'Energy Cell flowing — pure power on tap.'},
-        {id:'quantum_sold',statType:'quantum_core',statVal:1,text:'Quantum Core crafted. You have transcended.'}
+        {id:'quantum_sold',statType:'quantum_core',statVal:1,text:'Quantum Core crafted. You have transcended.'},
+        {id:'titanium_sold',statType:'titanium_bar',statVal:5,text:'Titanium smelted. The deep metals yield their strength.'},
+        {id:'nebula_refined',statType:'nebula_crystal',statVal:1,text:'Nebula Crystal refined. Starlight captured in glass.'},
+        {id:'plasma_sold',statType:'plasma_coil',statVal:1,text:'Plasma Coil assembled. Pure energy, tamed.'},
+        {id:'lattice_sold',statType:'quantum_lattice',statVal:1,text:'Quantum Lattice forged. Reality bends to your will.'},
+        {id:'singularity_first',statType:'singularity_shard',statVal:1,text:'Singularity Shard created. You have touched the infinite.'},
+        {id:'first_10m',money:10000000,text:'$10,000,000 — beyond mortal industry.'},
+        {id:'first_50m',money:50000000,text:'$50,000,000 — TRANSCENDENT MAGNATE!'}
     ],
     SKILL_TREE: {
         tier1: {
@@ -1525,13 +1588,21 @@ const Config = {
             nano_tech: {id:"nano_tech",name:"Nano Technology",costRP:2000,costCr:30000,unlocks:[],desc:"Assembler speed +40%.",req:["material_science","advanced_assembly"],x:1100,y:420},
             singularity: {id:"singularity",name:"Singularity",costRP:4000,costCr:65000,unlocks:[],desc:"Sell value x2. Stacks with Market Expansion (x2.6 total).",req:["quantum_tech"],x:1100,y:550},
             energy_mastery: {id:"energy_mastery",name:"Energy Mastery",costRP:1500,costCr:22000,unlocks:[],desc:"Energy Cell assembly time -35%.",req:["power_mining"],x:1100,y:60},
-            belt_upgrade: {id:"belt_upgrade",name:"Belt Upgrade",costRP:800,costCr:12000,unlocks:[],desc:"Right-click a belt to upgrade to the next grade. Costs the price difference.",req:["fast_belts"],x:1100,y:190}
+            belt_upgrade: {id:"belt_upgrade",name:"Belt Upgrade",costRP:800,costCr:12000,unlocks:[],desc:"Right-click a belt to upgrade to the next grade. Costs the price difference.",req:["fast_belts"],x:1100,y:190},
+            exotic_mining: {id:"exotic_mining",name:"Exotic Mining",costRP:2500,costCr:40000,unlocks:["titanium_ore","nebula_dust"],desc:"Unlock mining of Titanium and Nebula Dust deposits at the map edges.",req:["deep_mining","quantum_tech"],x:1100,y:680},
+            ore_synthesis: {id:"ore_synthesis",name:"Ore Synthesis",costRP:2000,costCr:30000,unlocks:["ore_synthesizer"],desc:"Unlock the Ore Synthesizer. Consumes Energy Cells to generate base ores.",req:["quantum_tech"],x:1100,y:750}
         },
         tier6: {
             rp_overclock_2: {id:"rp_overclock_2",name:"Hyperclock",costRP:2000,costCr:0,unlocks:[],desc:"All belts +20% faster. Stacks with Overclock.",req:["overclock"],x:1360,y:320},
             rp_trade_1: {id:"rp_trade_1",name:"Market Insight I",costRP:500,costCr:0,unlocks:[],desc:"Sell value +10%. Pure RP investment.",req:["singularity"],x:1360,y:550},
             rp_trade_2: {id:"rp_trade_2",name:"Market Insight II",costRP:1500,costCr:0,unlocks:[],desc:"Sell value +10% again. Stacks with Market Insight I.",req:["rp_trade_1"],x:1620,y:550},
-            alloy_mastery: {id:"alloy_mastery",name:"Alloy Mastery",costRP:1800,costCr:0,unlocks:[],desc:"Assembler speed +20% additional. Pure RP investment.",req:["nano_tech"],x:1360,y:420}
+            alloy_mastery: {id:"alloy_mastery",name:"Alloy Mastery",costRP:1800,costCr:0,unlocks:[],desc:"Assembler speed +20% additional. Pure RP investment.",req:["nano_tech"],x:1360,y:420},
+            deep_synthesis: {id:"deep_synthesis",name:"Deep Synthesis",costRP:4000,costCr:80000,unlocks:["synthesizer"],desc:"Unlock the Synthesizer. Forge Singularity Shards from quantum materials.",req:["exotic_mining","nano_tech"],x:1360,y:680},
+            titan_smelting: {id:"titan_smelting",name:"Titan Smelting",costRP:1500,costCr:0,unlocks:[],desc:"Titanium smelting time -40%. Pure RP investment.",req:["exotic_mining"],x:1360,y:750}
+        },
+        tier7: {
+            synthesis_mastery: {id:"synthesis_mastery",name:"Synthesis Mastery",costRP:6000,costCr:0,unlocks:[],desc:"Synthesizer speed +30%. Pure RP investment.",req:["deep_synthesis"],x:1620,y:680},
+            nebula_resonance: {id:"nebula_resonance",name:"Nebula Resonance",costRP:3500,costCr:0,unlocks:[],desc:"Nebula Crystal sell value +50%. Singularity Shard RP x2.",req:["deep_synthesis"],x:1620,y:750}
         }
     }
 };
@@ -1548,10 +1619,11 @@ for (const _rc of Object.values(Config.RESOURCES)) {
 }
 const DIRS = [[0,-1],[1,0],[0,1],[-1,0]]; // N,E,S,W — mirrors worker's DIRS
 const RKEYS = Object.keys(Config.RESOURCES); // mirrors worker's _RKEYS
-const RAW_ORES = new Set(['iron_ore','copper_ore','coal','stone','gold_ore','crystal','silicon']);
+const RAW_ORES = new Set(['iron_ore','copper_ore','coal','stone','gold_ore','crystal','silicon','titanium_ore','nebula_dust']);
 const DEEP_ORES_SET = new Set(['gold_ore','crystal','silicon']);
+const EXOTIC_ORES_SET = new Set(['titanium_ore','nebula_dust']);
 // Buildings that can show idle-glow (defined once — avoids inline array per-tile per-frame)
-const _IDLE_TYPES = new Set(['furnace','assembler','seller','lab']);
+const _IDLE_TYPES = new Set(['furnace','assembler','seller','lab','ore_synthesizer','synthesizer']);
 
 class Renderer {
     constructor(canvas, ctx) {
@@ -1816,6 +1888,7 @@ class Renderer {
             }
         }
         const deepMiningUnlocked = !!(uiState.unlockedTechs && uiState.unlockedTechs.has('deep_mining'));
+        const exoticMiningUnlocked = !!(uiState.unlockedTechs && uiState.unlockedTechs.has('exotic_mining'));
         const _glowP = 0.5 + 0.5 * Math.sin(this.time * 0.004);
         const _glowC1 = "rgba(255,160,30," + (0.55 + _glowP * 0.35) + ")";
         const _glowC2 = "rgba(255,190,80," + (0.18 + _glowP * 0.22) + ")";
@@ -1824,7 +1897,7 @@ class Renderer {
             if(x<0||x>=Config.MAP_W||y<0||y>=Config.MAP_H) continue;
             const mc=state.map[y]&&state.map[y][x];
             if (mc) {
-                const isLocked = DEEP_ORES_SET.has(mc) && !deepMiningUnlocked;
+                const isLocked = (DEEP_ORES_SET.has(mc) && !deepMiningUnlocked) || (EXOTIC_ORES_SET.has(mc) && !exoticMiningUnlocked);
                 if (isLocked) ctx.globalAlpha = 0.25;
                 if (this.zoom<0.28) {
                     ctx.fillStyle=Config.RESOURCES[mc]?.color||'#888';
@@ -1959,12 +2032,12 @@ class Renderer {
                 const _col=(Config.RESOURCES[_type]||{color:'#fff'}).color;
                 const _n=_pts.length>>1;
                 ctx.fillStyle=_col;
-                if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer') {
+                if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
                     // Bars / ingots: batch as rects
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-T*0.2,_pts[_j*2+1]-T*0.1,T*0.4,T*0.2);
                     ctx.fill();
-                } else if (_type==='circuit'||_type==='processor'||_type==='quantum_core'||_type==='nano_chip') {
+                } else if (_type==='circuit'||_type==='processor'||_type==='quantum_core'||_type==='nano_chip'||_type==='quantum_lattice'||_type==='singularity_shard') {
                     // Hexagons with glow (rare/valuable — shadow cost is bounded)
                     const _r=T*0.25;
                     ctx.shadowColor=_col; ctx.shadowBlur=10;
@@ -1991,6 +2064,16 @@ class Renderer {
                     for (let _j=0;_j<_n;_j++) {
                         ctx.beginPath(); ctx.arc(_pts[_j*2],_pts[_j*2+1],T*0.15,0,Math.PI*2); ctx.stroke();
                     }
+                } else if (_type==='nebula_crystal'||_type==='plasma_coil') {
+                    // Diamonds with glow (nebula/plasma items)
+                    ctx.shadowColor=_col; ctx.shadowBlur=12;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        ctx.moveTo(_cx,_cy-T*0.22); ctx.lineTo(_cx+T*0.18,_cy);
+                        ctx.lineTo(_cx,_cy+T*0.22); ctx.lineTo(_cx-T*0.18,_cy); ctx.closePath();
+                    }
+                    ctx.fill(); ctx.shadowBlur=0;
                 } else if (_type==='energy_cell') {
                     // Diamonds with glow
                     ctx.shadowColor=_col; ctx.shadowBlur=12;
@@ -3710,13 +3793,14 @@ class UI {
         const sections=[
             {label:'LOGISTICS',y1:20,y2:265,color:'rgba(91,140,200,0.04)',border:'rgba(91,140,200,0.12)',tc:'rgba(91,160,220,0.45)'},
             {label:'EXTRACTION',y1:275,y2:395,color:'rgba(80,170,100,0.04)',border:'rgba(80,170,100,0.12)',tc:'rgba(80,190,110,0.45)'},
-            {label:'PRODUCTION',y1:405,y2:730,color:'rgba(200,160,60,0.04)',border:'rgba(200,160,60,0.12)',tc:'rgba(210,175,70,0.45)'}
+            {label:'PRODUCTION',y1:405,y2:620,color:'rgba(200,160,60,0.04)',border:'rgba(200,160,60,0.12)',tc:'rgba(210,175,70,0.45)'},
+            {label:'DEEP SYNTHESIS',y1:630,y2:820,color:'rgba(180,140,255,0.04)',border:'rgba(180,140,255,0.12)',tc:'rgba(180,140,255,0.45)'}
         ];
         for (const s of sections) {
             ctx.fillStyle=s.color;
-            ctx.beginPath(); ctx.roundRect(-60,s.y1,1870,s.y2-s.y1,6); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(-60,s.y1,1920,s.y2-s.y1,6); ctx.fill();
             ctx.strokeStyle=s.border; ctx.lineWidth=1; ctx.setLineDash([6,6]);
-            ctx.beginPath(); ctx.roundRect(-60,s.y1,1870,s.y2-s.y1,6); ctx.stroke();
+            ctx.beginPath(); ctx.roundRect(-60,s.y1,1920,s.y2-s.y1,6); ctx.stroke();
             ctx.setLineDash([]);
             ctx.font='bold 10px Fira Code'; ctx.fillStyle=s.tc;
             ctx.textAlign='right'; ctx.fillText(s.label,-72,(s.y1+s.y2)/2+4);
@@ -3728,7 +3812,7 @@ class UI {
             ctx.font='bold 11px Fira Code'; ctx.fillStyle='rgba(91,106,175,0.3)';
             ctx.textAlign='center'; ctx.fillText(c.label,c.x+90,8);
             ctx.strokeStyle='rgba(91,106,175,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,8]);
-            ctx.beginPath(); ctx.moveTo(c.x+90,16); ctx.lineTo(c.x+90,740); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(c.x+90,16); ctx.lineTo(c.x+90,830); ctx.stroke();
             ctx.setLineDash([]);
         }
         ctx.textAlign='left';
@@ -3989,7 +4073,7 @@ class Game {
             } else if (msg.type==='place_failed') {
                 this.uiState.placeFailTile={x:msg.x,y:msg.y,at:performance.now()};
                 if(this._sfx) this._sfx.sfx('error');
-                if (msg.reason==='locked_ore') this.showToast('Requires Deep Mining skill');
+                if (msg.reason==='locked_ore') this.showToast('Requires Deep Mining or Exotic Mining skill');
             } else if (msg.type==='undo_done') {
                 this.showToast('Undone');
             } else if (msg.type==='milestone') {
