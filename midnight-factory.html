@@ -2344,8 +2344,108 @@ class Renderer {
                         ctx.arc(_pts[_j*2]-_r2*0.15,_pts[_j*2+1]-_r2*0.25,_r2*0.1,0,Math.PI*2);
                     }
                     ctx.fill();
+                } else if (_type==='iron_ore'||_type==='coal'||_type==='stone'||_type==='gold_ore'||_type==='crystal'||_type==='silicon'||_type==='titanium_ore'||_type==='nebula_dust') {
+                    // Raw ores: unique shapes with multi-pass detail
+                    const _oreShapes={
+                        iron_ore:{v:[[0.90,-0.35],[0.25,-0.85],[-0.55,-0.70],[-0.85,0.20],[-0.30,0.80],[0.65,0.70]],out:'rgba(70,85,120,0.7)',hi:'rgba(190,210,240,0.25)',fl:'rgba(100,120,155,0.4)',shd:'rgba(20,30,50,0.35)',spec:'rgba(210,225,245,0.5)'},
+                        coal:{v:[[0.80,-0.40],[0.0,-0.95],[-0.85,-0.30],[-0.50,0.75],[0.55,0.80]],out:'rgba(50,50,65,0.7)',hi:'rgba(130,130,155,0.2)',fl:'rgba(80,80,100,0.35)',shd:'rgba(15,15,25,0.4)',spec:'rgba(160,160,180,0.35)'},
+                        stone:{v:[[0.85,-0.10],[0.55,-0.70],[-0.10,-0.85],[-0.70,-0.55],[-0.85,0.25],[-0.30,0.80],[0.55,0.65]],out:'rgba(70,70,85,0.6)',hi:'rgba(160,160,180,0.2)',fl:'rgba(100,100,115,0.3)',shd:'rgba(20,20,30,0.35)',spec:'rgba(180,180,200,0.4)'},
+                        gold_ore:{v:[[0.90,-0.30],[0.30,-0.85],[-0.70,-0.60],[-0.80,0.55],[0.50,0.80]],out:'rgba(140,110,30,0.7)',hi:'rgba(255,230,140,0.3)',fl:'rgba(165,130,45,0.4)',shd:'rgba(50,35,5,0.35)',spec:'rgba(255,245,200,0.6)',glow:6},
+                        crystal:{v:[[0.0,-0.95],[-0.50,-0.20],[-0.30,0.85],[0.30,0.85],[0.50,-0.20]],out:'rgba(50,160,160,0.65)',hi:'rgba(180,255,255,0.3)',fl:'rgba(80,180,180,0.4)',shd:'rgba(10,40,40,0.35)',spec:'rgba(230,255,255,0.6)',glow:8},
+                        silicon:{v:[[0.85,0.0],[0.45,-0.75],[-0.45,-0.75],[-0.85,0.0],[-0.45,0.75],[0.45,0.75]],out:'rgba(65,130,160,0.6)',hi:'rgba(170,220,240,0.25)',fl:'rgba(90,150,180,0.35)',shd:'rgba(15,35,50,0.35)',spec:'rgba(200,235,250,0.5)'},
+                        titanium_ore:{v:[[0.85,-0.25],[0.15,-0.90],[-0.80,-0.45],[-0.65,0.65],[0.55,0.80]],out:'rgba(70,90,140,0.65)',hi:'rgba(180,200,235,0.25)',fl:'rgba(100,120,160,0.4)',shd:'rgba(20,30,50,0.35)',spec:'rgba(200,220,245,0.5)'},
+                        nebula_dust:{v:[[0.0,-0.90],[-0.25,-0.30],[-0.90,0.0],[-0.25,0.30],[0.0,0.90],[0.25,0.30],[0.90,0.0],[0.25,-0.30]],out:'rgba(140,70,170,0.6)',hi:'rgba(220,160,250,0.3)',fl:'rgba(160,100,190,0.35)',shd:'rgba(35,15,50,0.35)',spec:'rgba(240,200,255,0.55)',glow:8}
+                    };
+                    const _os=_oreShapes[_type],_r2=T*0.22,_vts=_os.v,_vn=_vts.length;
+                    const _mkOP=(oX,oY)=>{for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2]+oX,_cy=_pts[_j*2+1]+oY;ctx.moveTo(_cx+_vts[0][0]*_r2,_cy+_vts[0][1]*_r2);for(let _k=1;_k<_vn;_k++)ctx.lineTo(_cx+_vts[_k][0]*_r2,_cy+_vts[_k][1]*_r2);ctx.closePath();}};
+                    // Drop shadow
+                    ctx.fillStyle=_os.shd;ctx.beginPath();_mkOP(1,1);ctx.fill();
+                    if(_os.glow){ctx.shadowColor=_col;ctx.shadowBlur=_os.glow;}
+                    // Body fill
+                    ctx.fillStyle=_col;ctx.beginPath();_mkOP(0,0);ctx.fill();
+                    if(_os.glow)ctx.shadowBlur=0;
+                    // Outline
+                    ctx.strokeStyle=_os.out;ctx.lineWidth=1.5;ctx.stroke();
+                    // Highlight facet (first 2 verts + center offset)
+                    ctx.fillStyle=_os.hi;ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2],_cy=_pts[_j*2+1];ctx.moveTo(_cx+_vts[0][0]*_r2,_cy+_vts[0][1]*_r2);ctx.lineTo(_cx+_vts[1][0]*_r2,_cy+_vts[1][1]*_r2);ctx.lineTo(_cx-_r2*0.1,_cy-_r2*0.1);ctx.closePath();}
+                    ctx.fill();
+                    // Inner facet lines
+                    ctx.strokeStyle=_os.fl;ctx.lineWidth=0.7;ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2],_cy=_pts[_j*2+1];ctx.moveTo(_cx-_r2*0.1,_cy-_r2*0.7);ctx.lineTo(_cx+_r2*0.15,_cy+_r2*0.45);ctx.moveTo(_cx-_r2*0.6,_cy+_r2*0.1);ctx.lineTo(_cx+_r2*0.55,_cy-_r2*0.05);}
+                    ctx.stroke();
+                    // Specular dot
+                    ctx.fillStyle=_os.spec;ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){ctx.moveTo(_pts[_j*2]-_r2*0.15+_r2*0.1,_pts[_j*2+1]-_r2*0.25);ctx.arc(_pts[_j*2]-_r2*0.15,_pts[_j*2+1]-_r2*0.25,_r2*0.1,0,Math.PI*2);}
+                    ctx.fill();
+                } else if (_type==='brick') {
+                    // Brick: small rectangular block with terracotta gradient + mortar line
+                    const _bkW=T*0.28,_bkH=T*0.22;
+                    // Drop shadow
+                    ctx.fillStyle='rgba(40,15,10,0.3)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bkW/2+1,_pts[_j*2+1]-_bkH/2+1,_bkW,_bkH);
+                    ctx.fill();
+                    // Body with gradient
+                    for(let _j=0;_j<_n;_j++){
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        const _grd=ctx.createLinearGradient(0,_cy-_bkH/2,0,_cy+_bkH/2);
+                        _grd.addColorStop(0,'#d8a080');_grd.addColorStop(0.5,_col);_grd.addColorStop(1,'#8a5838');
+                        ctx.fillStyle=_grd;ctx.fillRect(_cx-_bkW/2,_cy-_bkH/2,_bkW,_bkH);
+                    }
+                    // Outline
+                    ctx.strokeStyle='rgba(120,60,40,0.65)';ctx.lineWidth=1.2;
+                    ctx.beginPath();for(let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bkW/2,_pts[_j*2+1]-_bkH/2,_bkW,_bkH);ctx.stroke();
+                    // Mortar line (horizontal center detail)
+                    ctx.strokeStyle='rgba(90,50,30,0.4)';ctx.lineWidth=0.8;ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){ctx.moveTo(_pts[_j*2]-_bkW*0.35,_pts[_j*2+1]);ctx.lineTo(_pts[_j*2]+_bkW*0.35,_pts[_j*2+1]);}
+                    ctx.stroke();
+                    // Specular dot
+                    ctx.fillStyle='rgba(240,200,170,0.45)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){ctx.moveTo(_pts[_j*2]-_bkW*0.2+1,_pts[_j*2+1]-_bkH*0.2);ctx.arc(_pts[_j*2]-_bkW*0.2,_pts[_j*2+1]-_bkH*0.2,1.0,0,Math.PI*2);}
+                    ctx.fill();
+                } else if (_type==='refined_coal') {
+                    // Refined coal: polished faceted shape (smoother than raw coal, slight blue sheen)
+                    const _r2=T*0.2;
+                    const _rcV=[[0.75,-0.50],[0.0,-0.88],[-0.78,-0.25],[-0.40,0.78],[0.60,0.72]];
+                    const _rcN=_rcV.length;
+                    const _mkRC=(oX,oY)=>{for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2]+oX,_cy=_pts[_j*2+1]+oY;ctx.moveTo(_cx+_rcV[0][0]*_r2,_cy+_rcV[0][1]*_r2);for(let _k=1;_k<_rcN;_k++)ctx.lineTo(_cx+_rcV[_k][0]*_r2,_cy+_rcV[_k][1]*_r2);ctx.closePath();}};
+                    // Drop shadow
+                    ctx.fillStyle='rgba(20,20,35,0.35)';ctx.beginPath();_mkRC(1,1);ctx.fill();
+                    // Body
+                    ctx.fillStyle=_col;ctx.beginPath();_mkRC(0,0);ctx.fill();
+                    // Outline
+                    ctx.strokeStyle='rgba(70,70,100,0.65)';ctx.lineWidth=1.3;ctx.stroke();
+                    // Blue sheen highlight
+                    ctx.fillStyle='rgba(160,170,210,0.22)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2],_cy=_pts[_j*2+1];ctx.moveTo(_cx+_rcV[0][0]*_r2,_cy+_rcV[0][1]*_r2);ctx.lineTo(_cx+_rcV[1][0]*_r2,_cy+_rcV[1][1]*_r2);ctx.lineTo(_cx,_cy);ctx.closePath();}
+                    ctx.fill();
+                    // Specular dot
+                    ctx.fillStyle='rgba(190,195,220,0.45)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){ctx.moveTo(_pts[_j*2]-_r2*0.1+0.9,_pts[_j*2+1]-_r2*0.3);ctx.arc(_pts[_j*2]-_r2*0.1,_pts[_j*2+1]-_r2*0.3,0.9,0,Math.PI*2);}
+                    ctx.fill();
+                } else if (_type==='composite') {
+                    // Composite: layered diamond — base + inner offset diamond
+                    const _r2=T*0.22;
+                    // Drop shadow
+                    ctx.fillStyle='rgba(15,15,25,0.3)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2]+1,_cy=_pts[_j*2+1]+1;ctx.moveTo(_cx,_cy-_r2);ctx.lineTo(_cx+_r2*0.85,_cy);ctx.lineTo(_cx,_cy+_r2);ctx.lineTo(_cx-_r2*0.85,_cy);ctx.closePath();}
+                    ctx.fill();
+                    // Outer diamond body
+                    ctx.fillStyle=_col;ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2],_cy=_pts[_j*2+1];ctx.moveTo(_cx,_cy-_r2);ctx.lineTo(_cx+_r2*0.85,_cy);ctx.lineTo(_cx,_cy+_r2);ctx.lineTo(_cx-_r2*0.85,_cy);ctx.closePath();}
+                    ctx.fill();
+                    // Outline
+                    ctx.strokeStyle='rgba(55,55,75,0.65)';ctx.lineWidth=1.3;ctx.stroke();
+                    // Inner diamond (lighter, offset up slightly — laminate layer)
+                    ctx.fillStyle='rgba(130,130,160,0.3)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){const _cx=_pts[_j*2],_cy=_pts[_j*2+1]-_r2*0.08;const _ir=_r2*0.55;ctx.moveTo(_cx,_cy-_ir);ctx.lineTo(_cx+_ir*0.85,_cy);ctx.lineTo(_cx,_cy+_ir);ctx.lineTo(_cx-_ir*0.85,_cy);ctx.closePath();}
+                    ctx.fill();
+                    // Specular dot
+                    ctx.fillStyle='rgba(180,180,200,0.4)';ctx.beginPath();
+                    for(let _j=0;_j<_n;_j++){ctx.moveTo(_pts[_j*2]+1,_pts[_j*2+1]-_r2*0.35);ctx.arc(_pts[_j*2],_pts[_j*2+1]-_r2*0.35,1.0,0,Math.PI*2);}
+                    ctx.fill();
                 } else {
-                    // Octagons (most common: raw ores, brick, composite…)
+                    // Octagons (fallback for any future items)
                     const _r2=T*0.2;
                     ctx.beginPath();
                     for (let _j=0;_j<_n;_j++) {
