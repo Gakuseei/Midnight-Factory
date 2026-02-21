@@ -1750,6 +1750,21 @@ class Renderer {
                 off.width = T+pad*2; off.height = T+pad*2;
                 const o = off.getContext('2d'); const c = resCfg.color;
                 o.translate(T/2+pad, T/2+pad);
+                if (type==='copper_ore') {
+                    // Copper-specific: chunky nuggets with warm tonal variation
+                    const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
+                    const nug=(ang,rad,ox,oy,hi)=>{
+                        o.beginPath();
+                        const V=[[0.95,-0.25],[0.35,-0.90],[-0.75,-0.55],[-0.85,0.50],[0.45,0.85]];
+                        const cs=Math.cos(ang),sn=Math.sin(ang);
+                        for(let j=0;j<5;j++){const vx=V[j][0]*rad,vy=V[j][1]*rad;const rx=ox+vx*cs-vy*sn;const ry=oy+vx*sn+vy*cs;if(j===0)o.moveTo(rx,ry);else o.lineTo(rx,ry);}
+                        o.closePath();o.fillStyle=hi?'#e0a888':c;o.fill();
+                        o.strokeStyle='rgba(255,210,170,0.35)';o.lineWidth=1;o.stroke();
+                    };
+                    nug(a1,T*0.25,-T*0.1,-T*0.1,false);nug(a2,T*0.20,T*0.15,-T*0.05,true);nug(a3,T*0.22,0,T*0.15,false);
+                    this.oreCache[type].push(off);
+                    continue;
+                }
                 if (type==="gold_ore"||type==="crystal"||type==="silicon") { o.shadowColor=c; o.shadowBlur=15; }
                 const a1=(i*1.5)%(Math.PI*2), a2=(i*2.5+1.2)%(Math.PI*2), a3=(i*3.5+2.4)%(Math.PI*2);
                 const dp=(ang,rad,ox,oy)=>{
@@ -2166,6 +2181,21 @@ class Renderer {
                         ctx.lineTo(_cx,_cy+T*0.22); ctx.lineTo(_cx-T*0.18,_cy); ctx.closePath();
                     }
                     ctx.fill(); ctx.shadowBlur=0;
+                } else if (_type==='copper_ore') {
+                    // Copper nuggets: irregular 5-vertex chunks + warm metallic stroke
+                    const _r2=T*0.2;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        ctx.moveTo(_cx+_r2*0.95,_cy-_r2*0.25);
+                        ctx.lineTo(_cx+_r2*0.35,_cy-_r2*0.90);
+                        ctx.lineTo(_cx-_r2*0.75,_cy-_r2*0.55);
+                        ctx.lineTo(_cx-_r2*0.85,_cy+_r2*0.50);
+                        ctx.lineTo(_cx+_r2*0.45,_cy+_r2*0.85);
+                        ctx.closePath();
+                    }
+                    ctx.fill();
+                    ctx.strokeStyle='rgba(255,200,160,0.45)';ctx.lineWidth=1;ctx.stroke();
                 } else {
                     // Octagons (most common: raw ores, brick, composite…)
                     const _r2=T*0.2;
