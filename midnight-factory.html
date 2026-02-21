@@ -2658,8 +2658,23 @@ class Renderer {
                         const [_ek,_ev]=_ents[_ei];
                         const _ec=Config.RESOURCES[_ek]?.color||'#aaa';
                         const _eY=_opy+_bP+_ei*(_bH+2)+_bH/2;
+                        const _eX=_opx+_bP+5;
+                        const _ids=ITEM_DOT_STYLES[_ek];
+                        const _eCat=_ids?_ids.cat:'ore';
                         ctx.fillStyle=_ec;
-                        ctx.beginPath(); ctx.arc(_opx+_bP+5,_eY,4,0,Math.PI*2); ctx.fill();
+                        ctx.beginPath();
+                        if (_eCat==='bar'||_eCat==='brick') {
+                            ctx.fillRect(_eX-5,_eY-3,10,6);
+                        } else if (_eCat==='hex') {
+                            for (let _hk=0;_hk<6;_hk++){const _ha=_hk*Math.PI/3-Math.PI/6;ctx.lineTo(_eX+Math.cos(_ha)*4,_eY+Math.sin(_ha)*4);} ctx.closePath(); ctx.fill();
+                        } else if (_eCat==='diamond'||_eCat==='composite') {
+                            ctx.moveTo(_eX,_eY-4);ctx.lineTo(_eX+3.5,_eY);ctx.lineTo(_eX,_eY+4);ctx.lineTo(_eX-3.5,_eY);ctx.closePath();ctx.fill();
+                        } else if (_eCat==='wire') {
+                            ctx.strokeStyle=_ec;ctx.lineWidth=2;ctx.arc(_eX,_eY,3,0,Math.PI*2);ctx.stroke();ctx.lineWidth=1;
+                        } else {
+                            // Ores + fallback: pentagon
+                            ctx.moveTo(_eX,_eY-4);ctx.lineTo(_eX+4,_eY-1.5);ctx.lineTo(_eX+2.5,_eY+3.5);ctx.lineTo(_eX-2.5,_eY+3.5);ctx.lineTo(_eX-4,_eY-1.5);ctx.closePath();ctx.fill();
+                        }
                         ctx.fillStyle='#c8d4e8';
                         ctx.fillText(_ek.replace(/_/g,' ')+' \xd7'+_ev,_opx+_bP+13,_eY);
                     }
@@ -4043,7 +4058,7 @@ class UI {
                 const rate60=stats&&stats[k]?stats[k]:0;
                 const ltCount=_st[k]||0;
                 const rateHtml=rate60?'<span style="color:var(--text-dim);font-size:11px;">'+cnt+'/min</span><span style="color:var(--gold)">$'+fmtNum(rate60)+'/min</span>':'<span style="color:var(--text-dim);font-size:11px;">idle</span>';
-                html+='<div style="display:flex;justify-content:space-between;font-size:13px;margin:4px 0;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:'+c+';box-shadow:0 0 4px '+c+'40"></span>'+nm+'</span><span style="display:flex;gap:8px;align-items:center;">'+rateHtml+'<span style="color:var(--research);font-size:11px;min-width:52px;text-align:right;">'+fmtNum(ltCount)+' ★</span></span></div>';
+                html+='<div style="display:flex;justify-content:space-between;font-size:13px;margin:4px 0;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><span style="'+itemDotStyle(k,8)+'"></span>'+nm+'</span><span style="display:flex;gap:8px;align-items:center;">'+rateHtml+'<span style="color:var(--research);font-size:11px;min-width:52px;text-align:right;">'+fmtNum(ltCount)+' ★</span></span></div>';
             }
             document.getElementById('stats-content').innerHTML=html;
             const _ltEl=document.getElementById('stats-lifetime');
@@ -4514,8 +4529,8 @@ class Game {
                         const bs=msg.buildingStats[this._bipOpen.y+','+this._bipOpen.x];
                         const el=document.getElementById('bip-inv');
                         if (bs&&el) {
-                            const inv=Object.entries(bs.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
-                            el.textContent='Inventory: '+(inv||'empty');
+                            const inv=Object.entries(bs.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>'<span style="'+itemDotStyle(k,8)+'"></span> '+v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
+                            el.innerHTML='Inventory: '+(inv||'empty');
                         }
                     }
                     if (this.renderer && this.renderer.spawnParticle) {
@@ -5064,8 +5079,8 @@ class Game {
             rows+='<div class="bip-row">Ore remaining: '+_vmPct2+'%</div>';
         }
         if (b.type==='furnace'||b.type==='assembler'||b.type==='ore_synthesizer'||b.type==='synthesizer') {
-            const inv=Object.entries(b.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
-            rows+='<div class="bip-row" id="bip-inv">Inventory: '+(inv||'empty')+'</div>';
+            const inv=Object.entries(b.inventory||{}).filter(([,v])=>v>0).map(([k,v])=>'<span style="'+itemDotStyle(k,8)+'"></span> '+v+'\u00d7 '+k.replace(/_/g,' ')).join(', ');
+            rows+='<div class="bip-row" id="bip-inv" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">Inventory: '+(inv||'empty')+'</div>';
         }
         if (b.type==='assembler'||b.type==='synthesizer') {
             const sel='background:#0f111a;border:1px solid var(--border);color:var(--text-active);border-radius:6px;padding:3px 6px;font-size:11px;width:100%;cursor:pointer;margin-top:2px;';
