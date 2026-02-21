@@ -596,8 +596,8 @@ self.onmessage = function(e) {
                 state.money = msg.save.money; state.rp = msg.save.rp;
                 state.unlockedTechs = new Set(msg.save.unlockedTechs || []);
                 if (msg.save.firedMilestones) for (const m of msg.save.firedMilestones) firedMilestones.add(m);
-                if (msg.save.quantumCoreCount) _quantumCoreCount = msg.save.quantumCoreCount;
-                if (msg.save.singularityCount) _singularityCount = msg.save.singularityCount;
+                if (msg.save.quantumCoreCount !== undefined) _quantumCoreCount = msg.save.quantumCoreCount;
+                if (msg.save.singularityCount !== undefined) _singularityCount = msg.save.singularityCount;
                 if (msg.save.lifetimeSold !== undefined) state.lifetimeSold = msg.save.lifetimeSold;
                 if (msg.save.lifetimeItems !== undefined) state.lifetimeItems = msg.save.lifetimeItems;
                 if (msg.save.statTotals) { for (var _stk in msg.save.statTotals) statTotals[_stk] = msg.save.statTotals[_stk]; }
