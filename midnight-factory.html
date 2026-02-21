@@ -2180,9 +2180,46 @@ class Renderer {
                     }
                     ctx.fill();
                 } else if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
-                    // Bars / ingots: batch as rects
+                    // Bars / ingots: gradient + shadow + outline + specular (per-type palette)
+                    const _barPalette={
+                        iron_bar:{top:'#d0ddf0',bot:'#7088a8',out:'rgba(80,100,140,0.7)',spec:'rgba(220,235,255,0.5)'},
+                        steel:{top:'#708898',bot:'#2a3a48',out:'rgba(40,55,70,0.7)',spec:'rgba(160,190,210,0.45)'},
+                        gold_ingot:{top:'#ffe860',bot:'#b89800',out:'rgba(140,110,20,0.7)',spec:'rgba(255,250,200,0.6)',glow:6},
+                        alloy:{top:'#9aa0b0',bot:'#4a5568',out:'rgba(60,70,85,0.7)',spec:'rgba(200,210,225,0.45)'},
+                        silicon_wafer:{top:'#e0f4ff',bot:'#88b0d8',out:'rgba(100,140,180,0.6)',spec:'rgba(240,250,255,0.5)'},
+                        titanium_bar:{top:'#c0d4f0',bot:'#6888b0',out:'rgba(70,100,140,0.65)',spec:'rgba(210,225,245,0.5)'},
+                        titan_alloy:{top:'#b0c8e8',bot:'#5878a0',out:'rgba(60,85,120,0.65)',spec:'rgba(200,220,240,0.5)'}
+                    };
+                    const _bp=_barPalette[_type]||{top:'#ccc',bot:'#666',out:'rgba(80,80,80,0.7)',spec:'rgba(255,255,255,0.4)'};
+                    const _bw=T*0.4,_bh=T*0.2;
+                    // Drop shadow
+                    ctx.fillStyle='rgba(0,0,0,0.3)';
                     ctx.beginPath();
-                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-T*0.2,_pts[_j*2+1]-T*0.1,T*0.4,T*0.2);
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2+1,_pts[_j*2+1]-_bh/2+1,_bw,_bh);
+                    ctx.fill();
+                    // Glow for valuable items
+                    if (_bp.glow) { ctx.shadowColor=_col; ctx.shadowBlur=_bp.glow; }
+                    // Main body with vertical gradient per item
+                    for (let _j=0;_j<_n;_j++) {
+                        const _cx=_pts[_j*2],_cy=_pts[_j*2+1];
+                        const _grd=ctx.createLinearGradient(0,_cy-_bh/2,0,_cy+_bh/2);
+                        _grd.addColorStop(0,_bp.top);_grd.addColorStop(0.45,_col);_grd.addColorStop(1,_bp.bot);
+                        ctx.fillStyle=_grd;
+                        ctx.fillRect(_cx-_bw/2,_cy-_bh/2,_bw,_bh);
+                    }
+                    if (_bp.glow) ctx.shadowBlur=0;
+                    // Dark outline
+                    ctx.strokeStyle=_bp.out;ctx.lineWidth=1.5;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) ctx.rect(_pts[_j*2]-_bw/2,_pts[_j*2+1]-_bh/2,_bw,_bh);
+                    ctx.stroke();
+                    // Specular dot
+                    ctx.fillStyle=_bp.spec;
+                    ctx.beginPath();
+                    for (let _j=0;_j<_n;_j++) {
+                        ctx.moveTo(_pts[_j*2]-_bw*0.18+1.2,_pts[_j*2+1]-_bh*0.15);
+                        ctx.arc(_pts[_j*2]-_bw*0.18,_pts[_j*2+1]-_bh*0.15,1.2,0,Math.PI*2);
+                    }
                     ctx.fill();
                 } else if (_type==='circuit'||_type==='processor'||_type==='quantum_core'||_type==='nano_chip'||_type==='quantum_lattice'||_type==='singularity_shard') {
                     // Hexagons with glow (rare/valuable — shadow cost is bounded)
