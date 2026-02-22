@@ -614,9 +614,18 @@ var SAVE_VERSION = 2;
 function migrateSave(data) {
     if (!data) return data;
     var v = data.version || 1;
+    // v1 -> v2: guarantee all fields exist with proper defaults
     if (v < 2) {
         if (!data.recipeMastery) data.recipeMastery = {};
         if (!data.statTotals) data.statTotals = {};
+        if (data.quantumCoreCount === undefined) data.quantumCoreCount = 0;
+        if (data.singularityCount === undefined) data.singularityCount = 0;
+        if (data.lifetimeSold === undefined) data.lifetimeSold = 0;
+        if (data.lifetimeItems === undefined) data.lifetimeItems = 0;
+        if (!data.firedMilestones) data.firedMilestones = [];
+        if (!data.unlockedTechs) data.unlockedTechs = [];
+        if (!data.sparseBuildings) data.sparseBuildings = {};
+        if (!data.oreData) data.oreData = {};
         data.version = 2;
     }
     return data;
@@ -633,18 +642,17 @@ self.onmessage = function(e) {
                 state.rp = Math.max(0, Number(msg.save.rp) || 0);
                 var _validSkillIds = {};
                 for (var _vt in Config.SKILL_TREE) for (var _vk in Config.SKILL_TREE[_vt]) _validSkillIds[_vk] = true;
-                state.unlockedTechs = new Set((msg.save.unlockedTechs || []).filter(function(id){ return _validSkillIds[id]; }));
-                if (msg.save.firedMilestones) for (const m of msg.save.firedMilestones) firedMilestones.add(m);
-                if (msg.save.quantumCoreCount !== undefined) _quantumCoreCount = Math.max(0, Number(msg.save.quantumCoreCount) || 0);
-                if (msg.save.singularityCount !== undefined) _singularityCount = Math.max(0, Number(msg.save.singularityCount) || 0);
-                if (msg.save.lifetimeSold !== undefined) state.lifetimeSold = Math.max(0, Number(msg.save.lifetimeSold) || 0);
-                if (msg.save.lifetimeItems !== undefined) state.lifetimeItems = Math.max(0, Number(msg.save.lifetimeItems) || 0);
-                if (msg.save.statTotals) { for (var _stk in msg.save.statTotals) statTotals[_stk] = msg.save.statTotals[_stk]; }
-                if (msg.save.recipeMastery) state.recipeMastery = msg.save.recipeMastery;
+                state.unlockedTechs = new Set(msg.save.unlockedTechs.filter(function(id){ return _validSkillIds[id]; }));
+                for (const m of msg.save.firedMilestones) firedMilestones.add(m);
+                _quantumCoreCount = Math.max(0, Number(msg.save.quantumCoreCount) || 0);
+                _singularityCount = Math.max(0, Number(msg.save.singularityCount) || 0);
+                state.lifetimeSold = Math.max(0, Number(msg.save.lifetimeSold) || 0);
+                state.lifetimeItems = Math.max(0, Number(msg.save.lifetimeItems) || 0);
+                for (var _stk in msg.save.statTotals) statTotals[_stk] = msg.save.statTotals[_stk];
+                state.recipeMastery = msg.save.recipeMastery;
                 const MH2 = Config.MAP_H, MW2 = Config.MAP_W;
                 state.buildings = new Array(MH2).fill(null).map(() => new Array(MW2).fill(null));
-                if (msg.save.sparseBuildings)
-                    for (const [key, b] of Object.entries(msg.save.sparseBuildings)) {
+                for (const [key, b] of Object.entries(msg.save.sparseBuildings)) {
                         const [ky, kx] = key.split(',').map(Number);
                         if (ky>=0 && ky<MH2 && kx>=0 && kx<MW2 && b.type && (Config.BUILD_COSTS[b.type] !== undefined || b.type.startsWith('belt'))) {
                             if (b.rrIndex===undefined) b.rrIndex=b.splitToggle?1:0;
@@ -661,7 +669,7 @@ self.onmessage = function(e) {
                     _lb._lockedRecipeRef = Config.RECIPES.synthesizer.find(function(r){ return r.out === _lb.lockedRecipe; }) || null;
                 } else { _lb._lockedRecipeRef = null; }
             }
-            if (msg.save && msg.save.oreData)
+            if (msg.save)
                 for (const [key, amt] of Object.entries(msg.save.oreData)) {
                     const [ky, kx] = key.split(',').map(Number);
                     state.oreAmounts[ky][kx] = amt;
@@ -3579,7 +3587,7 @@ class LoFiGen {
 
             this._barCount++;
 
-        }catch(e){}
+        }catch(e){console.warn('LoFiGen:',e);}
 
         var ms=(startTime+barLen-this._ctx.currentTime)*1000-80;
         var self=this;
@@ -4310,12 +4318,12 @@ class UI {
             reader.readAsText(file);
             e.target.value='';
         };
-        const sbs={'btn-speed-0':0,'btn-speed-05':0.5,'btn-speed-1':1,'btn-speed-2':2};
-        for (const [id,mult] of Object.entries(sbs)) {
-            document.getElementById(id).onclick=()=>{
-                this.main.worker.postMessage({type:'speed',mult});
-                document.querySelectorAll('.speed-btn').forEach(b=>{b.style.color='var(--text-dim)';b.style.background='transparent';});
-                const b=document.getElementById(id); b.style.color='var(--text-active)'; b.style.background='rgba(91,106,175,0.4)';
+        const _speedBtnIds=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2'];
+        for (let _si=0;_si<_speedBtnIds.length;_si++) {
+            const _idx=_si;
+            document.getElementById(_speedBtnIds[_si]).onclick=()=>{
+                this.main._speedIdx=_idx;
+                this.main._applySpeed();
             };
         }
         this.skillCanvas.width=window.innerWidth; this.skillCanvas.height=window.innerHeight;
@@ -4549,12 +4557,15 @@ class UI {
 
         const renderTab=(tab)=>{
             const recipes=Config.RECIPES[tab];
-            const fastest={};
-            for (const r of recipes) { if(!fastest[r.out]||r.time<fastest[r.out]) fastest[r.out]=r.time; }
+            const counts={}, fastest={}, slowest={};
+            for (const r of recipes) {
+                counts[r.out]=(counts[r.out]||0)+1;
+                if(!fastest[r.out]||r.time<fastest[r.out]) fastest[r.out]=r.time;
+                if(!slowest[r.out]||r.time>slowest[r.out]) slowest[r.out]=r.time;
+            }
             cont.innerHTML=recipes.map(r=>{
-                const dup=recipes.filter(x=>x.out===r.out).length>1;
-                const badge=dup&&r.time===fastest[r.out]?'Faster':'';
-                return makeCard(r,badge||null);
+                const badge=(counts[r.out]>1&&fastest[r.out]!==slowest[r.out]&&r.time===fastest[r.out])?'Faster':null;
+                return makeCard(r,badge);
             }).join('');
         };
 
@@ -4705,6 +4716,10 @@ class Game {
         this.uiState={hoverTile:null,selectedTool:null,rotation:1,skillTreeOpen:false,placeFailTile:null};
         this.spawnX=null; this.spawnY=null;
 
+        this.seed=localStorage.getItem('mf_seed')||Math.random().toString(36).substring(2,8);
+        localStorage.setItem('mf_seed',this.seed);
+        document.getElementById('seed-val').textContent=this.seed;
+
         // Build worker from embedded source + injected Config
         const workerSrc='const Config='+JSON.stringify(Config)+';\n'+document.getElementById('worker-src').textContent;
         const _blobUrl=URL.createObjectURL(new Blob([workerSrc],{type:'application/javascript'}));
@@ -4716,10 +4731,6 @@ class Game {
             if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
             this.showToast(_errMsg,'rgba(210,91,91,0.9)',8000);
         };
-
-        this.seed=localStorage.getItem('mf_seed')||Math.random().toString(36).substring(2,8);
-        localStorage.setItem('mf_seed',this.seed);
-        document.getElementById('seed-val').textContent=this.seed;
 
         const saved=localStorage.getItem('mf_save_'+this.seed);
         this._lastSaveData = null;
@@ -4734,12 +4745,20 @@ class Game {
         document.addEventListener('visibilitychange', ()=>{
             if (document.visibilityState==='hidden') this.worker.postMessage({type:'force_save'});
         });
+        this._inErrorHandler=false;
         window.onerror=(msg)=>{
-            this.showToast('Error: '+(msg||'unknown'),'rgba(210,91,91,0.9)',6000);
-            if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+            if (this._inErrorHandler) return;
+            this._inErrorHandler=true;
+            try {
+                this.showToast('Error: '+(msg||'unknown'),'rgba(210,91,91,0.9)',6000);
+                if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+            } finally { this._inErrorHandler=false; }
         };
         window.addEventListener('unhandledrejection',(ev)=>{
-            this.showToast('Error: '+(ev.reason||'unhandled rejection'),'rgba(210,91,91,0.9)',6000);
+            if (this._inErrorHandler) return;
+            this._inErrorHandler=true;
+            try { this.showToast('Error: '+(ev.reason||'unhandled rejection'),'rgba(210,91,91,0.9)',6000); }
+            finally { this._inErrorHandler=false; }
         });
         this._loop=this.loop.bind(this);
         requestAnimationFrame(this._loop);
@@ -5001,11 +5020,13 @@ class Game {
                 } else if (_db) { _db.isDepleted=true; }
             } else if (msg.type==='place_failed') {
                 this.uiState.placeFailTile={x:msg.x,y:msg.y,at:performance.now()};
-                if(this._sfx) this._sfx.sfx('error');
+                if(this._sfx&&!this._isDragging) this._sfx.sfx('error');
                 if (msg.reason==='locked_ore') this.showToast('Requires Deep Mining or Exotic Mining skill');
-                else if (msg.reason==='funds') this.showToast('Not enough credits ($'+msg.cost+' needed)');
-                else if (msg.reason==='no_ore') this.showToast('Must be placed on an ore tile');
-                else if (msg.reason==='occupied') this.showToast('Tile already occupied');
+                else if (!this._isDragging) {
+                    if (msg.reason==='funds') this.showToast('Not enough credits ($'+msg.cost+' needed)');
+                    else if (msg.reason==='no_ore') this.showToast('Must be placed on an ore tile');
+                    else if (msg.reason==='occupied') this.showToast('Tile already occupied');
+                }
             } else if (msg.type==='undo_done') {
                 this.showToast('Undone');
             } else if (msg.type==='undo_failed') {
