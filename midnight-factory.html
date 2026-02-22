@@ -1308,7 +1308,7 @@ function updateSimulation(dt) {
                         if (state.oreAmounts[_vmT.y][_vmT.x] > 0) break;
                         // Tile depleted — remove (guard against duplicate ore_depleted if another mine already cleared it)
                         if (state.map[_vmT.y][_vmT.x] !== null) { state.map[_vmT.y][_vmT.x] = null; postMessage({type:'ore_depleted', x:_vmT.x, y:_vmT.y}); }
-                        b.veinTiles.splice(b.veinIdx, 1);
+                        b.veinTiles[b.veinIdx] = b.veinTiles[b.veinTiles.length - 1]; b.veinTiles.length--;
                         if (b.veinTiles.length === 0) break;
                         if (b.veinIdx >= b.veinTiles.length) b.veinIdx = 0;
                     }
@@ -1323,7 +1323,7 @@ function updateSimulation(dt) {
                         b.remainingOre = _vmRem;
                         if (state.oreAmounts[_vmCur.y][_vmCur.x] <= 0) {
                             if (state.map[_vmCur.y][_vmCur.x] !== null) { state.map[_vmCur.y][_vmCur.x] = null; postMessage({type:'ore_depleted', x:_vmCur.x, y:_vmCur.y}); }
-                            b.veinTiles.splice(b.veinIdx, 1);
+                            b.veinTiles[b.veinIdx] = b.veinTiles[b.veinTiles.length - 1]; b.veinTiles.length--;
                         } else {
                             b.veinIdx = (b.veinIdx + 1) % b.veinTiles.length;
                         }
@@ -1673,7 +1673,7 @@ const Config = {
             {in:{quantum_lattice:1,plasma_coil:2},out:"singularity_shard",time:15000}
         ]
     },
-    BUILD_COSTS: { mine:10, belt:2, belt2:10, belt3:30, furnace:25, assembler:150, lab:300, splitter:15, merger:15, seller:20, tunnel_in:20, tunnel_out:20, vein_miner:200, ore_synthesizer:1500, synthesizer:2000 },
+    BUILD_COSTS: { mine:10, belt:2, belt2:10, belt3:30, furnace:25, assembler:150, lab:300, splitter:15, merger:15, seller:20, tunnel_in:20, tunnel_out:20, vein_miner:200, ore_synthesizer:800, synthesizer:2000 },
     MILESTONES: [
         {id:'first_500',money:500,text:'$500 — factory warming up!',rewardMoney:50},
         {id:'first_5k',money:5000,text:'$5,000 — real momentum building!',rewardMoney:200},
@@ -1689,14 +1689,14 @@ const Config = {
         {id:'processor_sold',statType:'processor',statVal:1,text:'Processor online. The singularity approaches.',rewardRP:150},
         {id:'energy_sold',statType:'energy_cell',statVal:1,text:'Energy Cell flowing — pure power on tap.',rewardRP:200},
         {id:'quantum_sold',statType:'quantum_core',statVal:1,text:'Quantum Core crafted. You have transcended.',rewardRP:500},
-        {id:'titanium_sold',statType:'titanium_bar',statVal:5,text:'Titanium smelted. The deep metals yield their strength.'},
-        {id:'nebula_refined',statType:'nebula_crystal',statVal:1,text:'Nebula Crystal refined. Starlight captured in glass.'},
-        {id:'plasma_sold',statType:'plasma_coil',statVal:1,text:'Plasma Coil assembled. Pure energy, tamed.'},
-        {id:'lattice_sold',statType:'quantum_lattice',statVal:1,text:'Quantum Lattice forged. Reality bends to your will.'},
-        {id:'singularity_first',statType:'singularity_shard',statVal:1,text:'Singularity Shard created. You have touched the infinite.'},
-        {id:'first_10m',money:10000000,text:'$10,000,000 — beyond mortal industry.'},
-        {id:'first_25m',money:25000000,text:'$25,000,000 — the cosmos takes notice.'},
-        {id:'first_50m',money:50000000,text:'$50,000,000 — TRANSCENDENT MAGNATE!'}
+        {id:'titanium_sold',statType:'titanium_bar',statVal:5,text:'Titanium smelted. The deep metals yield their strength.',rewardRP:500},
+        {id:'nebula_refined',statType:'nebula_crystal',statVal:1,text:'Nebula Crystal refined. Starlight captured in glass.',rewardRP:800},
+        {id:'plasma_sold',statType:'plasma_coil',statVal:1,text:'Plasma Coil assembled. Pure energy, tamed.',rewardRP:1000},
+        {id:'lattice_sold',statType:'quantum_lattice',statVal:1,text:'Quantum Lattice forged. Reality bends to your will.',rewardRP:2000},
+        {id:'singularity_first',statType:'singularity_shard',statVal:1,text:'Singularity Shard created. You have touched the infinite.',rewardRP:5000},
+        {id:'first_10m',money:10000000,text:'$10,000,000 — beyond mortal industry.',rewardRP:2000},
+        {id:'first_25m',money:25000000,text:'$25,000,000 — the cosmos takes notice.',rewardRP:5000},
+        {id:'first_50m',money:50000000,text:'$50,000,000 — TRANSCENDENT MAGNATE!',rewardRP:10000}
     ],
     SKILL_TREE: {
         tier1: {
@@ -1732,7 +1732,7 @@ const Config = {
             energy_mastery: {id:"energy_mastery",name:"Energy Mastery",costRP:1500,costCr:22000,unlocks:[],desc:"Energy Cell assembly time -35%.",req:["power_mining"],x:1100,y:50},
             belt_upgrade: {id:"belt_upgrade",name:"Belt Upgrade",costRP:800,costCr:12000,unlocks:[],desc:"Right-click a belt to upgrade to the next grade. Costs the price difference.",req:["fast_belts"],x:1100,y:130},
             exotic_mining: {id:"exotic_mining",name:"Exotic Mining",costRP:2500,costCr:40000,unlocks:["titanium_ore","nebula_dust"],desc:"Unlock mining of Titanium and Nebula Dust deposits at the map edges.",req:["deep_mining","quantum_tech"],x:1100,y:530},
-            ore_synthesis: {id:"ore_synthesis",name:"Ore Synthesis",costRP:2000,costCr:30000,unlocks:["ore_synthesizer"],desc:"Unlock the Ore Synthesizer. Consumes Energy Cells to generate base ores.",req:["quantum_tech"],x:1100,y:610}
+            ore_synthesis: {id:"ore_synthesis",name:"Ore Synthesis",costRP:2000,costCr:30000,unlocks:["ore_synthesizer"],desc:"Unlock the Ore Synthesizer. Converts Energy Cells into raw ores when natural deposits run out.",req:["quantum_tech"],x:1100,y:610}
         },
         tier6: {
             rp_overclock_2: {id:"rp_overclock_2",name:"Hyperclock",costRP:2000,costCr:0,unlocks:[],desc:"All belts +20% faster. Stacks with Overclock.",req:["overclock"],x:1360,y:370},
