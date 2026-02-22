@@ -3970,7 +3970,7 @@ class UI {
         this.skillOverlay=document.getElementById('skill-tree-overlay');
         this.skillCanvas=document.getElementById('skill-canvas');
         this.skillCtx=this.skillCanvas.getContext('2d');
-        this.unlockedTechs=new Set(); this.selectedTool=null; this.rotation=1;
+        this.unlockedTechs=new Set(); this._visCache=null; this.selectedTool=null; this.rotation=1;
         this.skillCam={x:0,y:0,zoom:1,vx:0,vy:0}; this.isSkillDragging=false;
         this.minimapCanvas=document.getElementById('minimap-canvas');
         this.minimapCtx=this.minimapCanvas.getContext('2d',{alpha:false});
@@ -4209,9 +4209,9 @@ class UI {
         if (!this.isSkillDragging&&(Math.abs(this.skillCam.vx)>0.1||Math.abs(this.skillCam.vy)>0.1)) {
             this.skillCam.x+=this.skillCam.vx; this.skillCam.y+=this.skillCam.vy;
             this.skillCam.vx*=0.92; this.skillCam.vy*=0.92;
-            this.drawSkillTree();
             if (this.lastMousePos) this.handleSkillHover(this.lastMousePos.x,this.lastMousePos.y);
-        } else if (this.isSkillDragging) this.drawSkillTree();
+        }
+        this.drawSkillTree();
     }
     toggleSkillTree() {
         const open=this.skillOverlay.classList.contains('active');
@@ -4222,14 +4222,20 @@ class UI {
             this.skillOverlay.classList.add('active'); this.main.setSkillTreeState(true);
             this.skillCanvas.width=window.innerWidth; this.skillCanvas.height=window.innerHeight;
             {
-                const tW=1800, tH=560, hPad=80, vPad=60, topOff=90;
+                const vis = this.computeVisibility();
+                let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+                for (const t in Config.SKILL_TREE) for (const k in Config.SKILL_TREE[t]) {
+                    if (!vis.has(k)) continue;
+                    const n=Config.SKILL_TREE[t][k];
+                    if(n.x<x0)x0=n.x; if(n.y<y0)y0=n.y;
+                    if(n.x+180>x1)x1=n.x+180; if(n.y+60>y1)y1=n.y+60;
+                }
+                if(x0===Infinity){x0=0;y0=0;x1=1800;y1=560;}
+                x0-=80;y0-=80;x1+=80;y1+=80;
+                const tW=x1-x0,tH=y1-y0,hPad=80,vPad=60,topOff=90;
                 const fz=Math.min((window.innerWidth-hPad*2)/tW,(window.innerHeight-topOff-vPad)/tH,1.0);
-                const sw=tW*fz, sh=tH*fz;
-                this.skillCam={
-                    x:(window.innerWidth-sw)/2-60*fz,
-                    y:topOff+((window.innerHeight-topOff-vPad)-sh)/2-60*fz,
-                    zoom:fz,vx:0,vy:0
-                };
+                const sw=tW*fz,sh=tH*fz;
+                this.skillCam={x:(window.innerWidth-sw)/2-x0*fz,y:topOff+((window.innerHeight-topOff-vPad)-sh)/2-y0*fz,zoom:fz,vx:0,vy:0};
             }
             this.drawSkillTree();
             this._startSkillTreeAnim();
@@ -4272,32 +4278,57 @@ class UI {
         else {b.style.borderColor='';b.style.color='';b.style.boxShadow='';}
     }
     getNodeAt(qx,qy) {
+        const vis=this.computeVisibility();
         const lx=(qx-this.skillCam.x)/this.skillCam.zoom, ly=(qy-this.skillCam.y)/this.skillCam.zoom;
         for (const t in Config.SKILL_TREE) for (const k in Config.SKILL_TREE[t]) {
+            if (!vis.has(k)) continue;
             const n=Config.SKILL_TREE[t][k];
-            if (lx>=n.x&&lx<=n.x+180&&ly>=n.y&&ly<=n.y+60) return {key:k,node:n};
+            if (lx>=n.x&&lx<=n.x+180&&ly>=n.y&&ly<=n.y+60) return {key:k,node:n,vis:vis.get(k)};
         }
         return null;
     }
     handleSkillHover(x,y) {
         this.lastMousePos={x,y}; const hit=this.getNodeAt(x,y); const tt=document.getElementById('tooltip');
         if (hit) {
-            this.skillCanvas.style.cursor='pointer'; tt.style.display='block';
-            tt.style.left=(x+15)+'px'; tt.style.top=(y+15)+'px';
-            const n=hit.node, un=this.unlockedTechs.has(hit.key), mr=n.req.every(r=>this.unlockedTechs.has(r));
-            tt.innerHTML='<div class="tooltip-title">'+n.name+'</div><div class="tooltip-desc">'+n.desc+'</div>'
-                +(!mr?'<div class="tooltip-req">Requires: '+n.req.map(r=>Config.SKILL_TREE[this.findTier(r)][r].name).join(', ')+'</div>':'')
-                +(un?'<div class="tooltip-req" style="color:var(--sell)">✓ Unlocked</div>':'<div class="tooltip-cost"><span class="cost-rp">'+n.costRP+' RP</span><span class="cost-cr">$'+n.costCr+'</span></div>');
+            const n=hit.node, nv=hit.vis;
+            if (nv==='upcoming') {
+                this.skillCanvas.style.cursor='default'; tt.style.display='block';
+                tt.style.left=(x+15)+'px'; tt.style.top=(y+15)+'px';
+                tt.innerHTML='<div class="tooltip-title">'+n.name+'</div><div class="tooltip-desc">'+n.desc+'</div>'
+                    +'<div class="tooltip-req">Requires: '+n.req.map(r=>Config.SKILL_TREE[this.findTier(r)][r].name).join(', ')+'</div>';
+            } else {
+                this.skillCanvas.style.cursor='pointer'; tt.style.display='block';
+                tt.style.left=(x+15)+'px'; tt.style.top=(y+15)+'px';
+                const un=nv==='unlocked', mr=n.req.every(r=>this.unlockedTechs.has(r));
+                tt.innerHTML='<div class="tooltip-title">'+n.name+'</div><div class="tooltip-desc">'+n.desc+'</div>'
+                    +(!mr?'<div class="tooltip-req">Requires: '+n.req.map(r=>Config.SKILL_TREE[this.findTier(r)][r].name).join(', ')+'</div>':'')
+                    +(un?'<div class="tooltip-req" style="color:var(--sell)">\u2713 Unlocked</div>':'<div class="tooltip-cost"><span class="cost-rp">'+n.costRP+' RP</span><span class="cost-cr">$'+n.costCr+'</span></div>');
+            }
         } else { this.skillCanvas.style.cursor='grab'; tt.style.display='none'; }
     }
     handleSkillClick(x,y) {
         const hit=this.getNodeAt(x,y); if (!hit) return;
+        if (hit.vis!=='available') return;
         const n=hit.node;
-        if (this.unlockedTechs.has(hit.key)||!n.req.every(r=>this.unlockedTechs.has(r))) return;
         if (this.main.state.money>=n.costCr&&this.main.state.rp>=n.costRP)
             this.main.worker.postMessage({type:'buy_skill',key:hit.key,costCr:n.costCr,costRP:n.costRP});
     }
     findTier(key) { for (const t in Config.SKILL_TREE) if (Config.SKILL_TREE[t][key]) return t; return null; }
+    computeVisibility() {
+        if (this._visCache) return this._visCache;
+        const vis = new Map();
+        for (const tier in Config.SKILL_TREE) for (const key in Config.SKILL_TREE[tier]) {
+            if (this.unlockedTechs.has(key)) vis.set(key, 'unlocked');
+            else if (Config.SKILL_TREE[tier][key].req.every(r => this.unlockedTechs.has(r))) vis.set(key, 'available');
+        }
+        for (const tier in Config.SKILL_TREE) for (const key in Config.SKILL_TREE[tier]) {
+            if (vis.has(key)) continue;
+            if (Config.SKILL_TREE[tier][key].req.every(r => vis.get(r)==='unlocked' || vis.get(r)==='available'))
+                vis.set(key, 'upcoming');
+        }
+        this._visCache = vis;
+        return vis;
+    }
     invalidateMinimap() {
         this._minimapDirtyAt = performance.now();
     }
@@ -4388,12 +4419,13 @@ class UI {
     }
     drawSkillTree() {
         const ctx=this.skillCtx;
+        const vis=this.computeVisibility(); const now=performance.now();
         ctx.clearRect(0,0,this.skillCanvas.width,this.skillCanvas.height);
         ctx.save(); ctx.translate(this.skillCam.x,this.skillCam.y); ctx.scale(this.skillCam.zoom,this.skillCam.zoom);
         ctx.strokeStyle="rgba(40,45,65,0.15)"; ctx.lineWidth=1; ctx.beginPath();
         for(let i=-2000;i<3000;i+=40){ctx.moveTo(i,-2000);ctx.lineTo(i,3000);ctx.moveTo(-2000,i);ctx.lineTo(3000,i);}
         ctx.stroke();
-        // ── Section backgrounds ──────────────────────────────────────────────
+        // ── Section backgrounds (only if section has visible nodes) ──────────
         const sections=[
             {label:'LOGISTICS',y1:10,y2:175,color:'rgba(91,140,200,0.04)',border:'rgba(91,140,200,0.12)',tc:'rgba(91,160,220,0.45)'},
             {label:'EXTRACTION',y1:185,y2:335,color:'rgba(80,170,100,0.04)',border:'rgba(80,170,100,0.12)',tc:'rgba(80,190,110,0.45)'},
@@ -4401,6 +4433,13 @@ class UI {
             {label:'DEEP SYNTHESIS',y1:510,y2:660,color:'rgba(180,140,255,0.04)',border:'rgba(180,140,255,0.12)',tc:'rgba(180,140,255,0.45)'}
         ];
         for (const s of sections) {
+            let hasVisible=false;
+            for (const t in Config.SKILL_TREE) for (const k in Config.SKILL_TREE[t]) {
+                if (!vis.has(k)) continue;
+                const n=Config.SKILL_TREE[t][k];
+                if (n.y+30>=s.y1&&n.y+30<=s.y2){hasVisible=true;break;}
+            }
+            if (!hasVisible) continue;
             ctx.fillStyle=s.color;
             ctx.beginPath(); ctx.roundRect(-60,s.y1,1920,s.y2-s.y1,6); ctx.fill();
             ctx.strokeStyle=s.border; ctx.lineWidth=1; ctx.setLineDash([6,6]);
@@ -4410,9 +4449,15 @@ class UI {
             ctx.textAlign='right'; ctx.fillText(s.label,-72,(s.y1+s.y2)/2+4);
         }
         ctx.textAlign='left';
-        // ── Column depth labels ───────────────────────────────────────────────
+        // ── Column depth labels (only if column has visible nodes) ───────────
         const cols=[{x:60,label:'I'},{x:320,label:'II'},{x:580,label:'III'},{x:840,label:'IV'},{x:1100,label:'V'},{x:1360,label:'VI'},{x:1620,label:'VII'}];
         for (const c of cols) {
+            let hasVisible=false;
+            for (const t in Config.SKILL_TREE) for (const k in Config.SKILL_TREE[t]) {
+                if (!vis.has(k)) continue;
+                if (Config.SKILL_TREE[t][k].x===c.x){hasVisible=true;break;}
+            }
+            if (!hasVisible) continue;
             ctx.font='bold 11px Fira Code'; ctx.fillStyle='rgba(91,106,175,0.3)';
             ctx.textAlign='center'; ctx.fillText(c.label,c.x+90,8);
             ctx.strokeStyle='rgba(91,106,175,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,8]);
@@ -4420,16 +4465,20 @@ class UI {
             ctx.setLineDash([]);
         }
         ctx.textAlign='left';
+        // ── Arrows (skip if either endpoint hidden) ──────────────────────────
         for (const tier in Config.SKILL_TREE) for (const key in Config.SKILL_TREE[tier]) {
+            if (!vis.has(key)) continue;
             const node=Config.SKILL_TREE[tier][key];
             for (const r of node.req) {
+                if (!vis.has(r)) continue;
                 const rt=this.findTier(r); if (!rt) continue;
                 const rn=Config.SKILL_TREE[rt][r]; if (!rn) continue;
                 const sx=rn.x+180,sy=rn.y+30,tx=node.x,ty=node.y+30;
                 const ru=this.unlockedTechs.has(r),nu=this.unlockedTechs.has(key);
+                const nv=vis.get(key);
                 if(ru&&nu){ctx.strokeStyle=Config.COLORS.sell;ctx.lineWidth=2;ctx.shadowColor=Config.COLORS.sell;ctx.shadowBlur=4;}
-                else if(ru){ctx.strokeStyle="rgba(140,160,220,0.45)";ctx.lineWidth=1.5;ctx.shadowBlur=0;}
-                else{ctx.strokeStyle="rgba(91,106,175,0.15)";ctx.lineWidth=1;ctx.shadowBlur=0;ctx.setLineDash([4,4]);}
+                else if(ru&&nv==='available'){ctx.strokeStyle="rgba(140,160,220,0.45)";ctx.lineWidth=1.5;ctx.shadowBlur=0;}
+                else{ctx.strokeStyle="rgba(91,106,175,0.10)";ctx.lineWidth=1;ctx.shadowBlur=0;ctx.setLineDash([4,4]);}
                 let ahx=tx,ahy=ty,ahAng=0;
                 ctx.beginPath();
                 if(rn.x===node.x){
@@ -4448,18 +4497,36 @@ class UI {
                 ctx.closePath();ctx.fill();
             }
         }
+        // ── Nodes (skip hidden) ──────────────────────────────────────────────
         for (const tier in Config.SKILL_TREE) for (const key in Config.SKILL_TREE[tier]) {
+            const nv=vis.get(key); if (!nv) continue;
             const node=Config.SKILL_TREE[tier][key];
-            const un=this.unlockedTechs.has(key), ca=node.req.every(r=>this.unlockedTechs.has(r));
+            if (nv==='upcoming') {
+                ctx.strokeStyle="rgba(60,70,100,0.3)"; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+                ctx.beginPath(); ctx.roundRect(node.x,node.y,180,60,12); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.globalAlpha=0.5; ctx.fillStyle="#6b7c9e"; ctx.font="bold 14px Quicksand";
+                ctx.fillText(node.name,node.x+15,node.y+25);
+                ctx.font="11px Fira Code"; ctx.fillStyle="rgba(91,106,175,0.4)";
+                ctx.fillText("\u2022\u2022\u2022",node.x+15,node.y+45);
+                ctx.globalAlpha=1.0;
+                continue;
+            }
+            const un=nv==='unlocked', ca=nv==='available';
             const g=ctx.createLinearGradient(node.x,node.y,node.x+180,node.y+60);
             if (un){g.addColorStop(0,"rgba(50,100,60,0.9)");g.addColorStop(1,"rgba(20,50,30,0.9)");ctx.strokeStyle=Config.COLORS.sell;}
             else if (ca){g.addColorStop(0,"rgba(40,50,80,0.9)");g.addColorStop(1,"rgba(20,25,40,0.9)");ctx.strokeStyle="#8ca0dc";}
             else{g.addColorStop(0,"rgba(15,17,26,0.9)");g.addColorStop(1,"rgba(10,12,18,0.9)");ctx.strokeStyle="rgba(60,70,100,0.4)";}
             ctx.fillStyle=g; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect(node.x,node.y,180,60,12); ctx.fill(); ctx.stroke();
+            if (ca) {
+                const pulse=0.3+0.3*Math.sin(now*0.003);
+                ctx.save(); ctx.strokeStyle="rgba(140,180,255,"+pulse+")"; ctx.lineWidth=2.5;
+                ctx.beginPath(); ctx.roundRect(node.x-1,node.y-1,182,62,13); ctx.stroke(); ctx.restore();
+            }
             ctx.fillStyle=un?"#fff":ca?"#e2e8f0":"#6b7c9e"; ctx.font="bold 14px Quicksand";
             ctx.fillText(node.name,node.x+15,node.y+25);
             if (!un){ctx.font="11px Fira Code";ctx.fillStyle=Config.COLORS.research;ctx.fillText(node.costRP+' RP',node.x+15,node.y+45);if(node.costCr>0){ctx.fillStyle=Config.COLORS.gold;ctx.fillText('$'+node.costCr,node.x+75,node.y+45);}else{ctx.fillStyle='rgba(91,106,175,0.5)';ctx.fillText('RP only',node.x+75,node.y+45);}}
-            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;ctx.fillText("✓ Unlocked",node.x+15,node.y+45);}
+            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;ctx.fillText("\u2713 Unlocked",node.x+15,node.y+45);}
         }
         ctx.restore();
     }
@@ -4536,6 +4603,7 @@ class Game {
                 this.state.buildings=msg.buildings||new Array(Config.MAP_H).fill(null).map(()=>new Array(Config.MAP_W).fill(null));
                 for (let _iy=0;_iy<this.state.buildings.length;_iy++) for (let _ix=0;_ix<(this.state.buildings[_iy]||[]).length;_ix++) { const _ib=this.state.buildings[_iy][_ix]; if (_ib&&_ib.type==='mine'&&!this.state.map[_iy][_ix]) _ib.isDepleted=true; if (_ib&&_ib.type==='vein_miner'&&((!_ib.veinTiles||_ib.veinTiles.length===0)||(_ib.initialOre>0&&_ib.remainingOre<=0))) _ib.isDepleted=true; }
                 if (msg.unlockedTechs) this.ui.unlockedTechs=new Set(msg.unlockedTechs);
+                this.ui._visCache=null;
                 this._prevMoneySnap = this.state.money;
                 this.ui.updateStats(this.state.money,this.state.rp);
                 if (msg.startX!==undefined){
@@ -4672,7 +4740,7 @@ class Game {
             } else if (msg.type==='skill_bought') {
                 this.state.money=msg.money; this.state.rp=msg.rp;
                 if(this._sfx) this._sfx.sfx('skill_buy');
-                this.ui.unlockedTechs.add(msg.key); this.ui.drawSkillTree();
+                this.ui.unlockedTechs.add(msg.key); this.ui._visCache=null; this.ui.drawSkillTree();
                 this.ui.updateBuildMenuAvailability(this.state.money);
                 const tt=document.getElementById('tooltip'); if (tt) tt.style.display='none';
                 this.showSkillPulse();
