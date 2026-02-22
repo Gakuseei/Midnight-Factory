@@ -115,7 +115,7 @@ canvas#game-canvas {
   position: absolute; background: var(--surface-hover); border: 1px solid var(--border-highlight);
   padding: 10px 14px; border-radius: 8px; color: var(--text-active);
   font-size: 12px; pointer-events: none; z-index: 200; display: none;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4); backdrop-filter: blur(10px); max-width: 250px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4); backdrop-filter: blur(10px); max-width: 340px;
 }
 .tooltip-title { font-weight: 600; margin-bottom: 4px; font-size: 14px; color: var(--gold); }
 .tooltip-desc { color: var(--text); margin-bottom: 6px; line-height: 1.4; }
@@ -3579,7 +3579,7 @@ class LoFiGen {
 
             this._barCount++;
 
-        }catch(e){console.warn('LoFiGen:',e);}
+        }catch(e){}
 
         var ms=(startTime+barLen-this._ctx.currentTime)*1000-80;
         var self=this;
@@ -4001,6 +4001,7 @@ const SHORTCUTS_LIST=[
     {key:'F',desc:'Toggle belt flow debug overlay'},
     {key:'V',desc:'Belt heatmap overlay'},
     {key:'Shift+Drag',desc:'Straight belt line'},
+    {key:'[ / ]',desc:'Speed down / up'},
 ];
 
 class UI {
@@ -4237,9 +4238,9 @@ class UI {
 
         // ── Music generator setup ────────────────────────────────────────
         this._lofi = new LoFiGen();
-        this._lofiVol = (parseInt(localStorage.getItem('mf_music_vol')||'30')) / 100;
+        this._lofiVol = (parseInt(localStorage.getItem('mf_music_vol')||'50')) / 100;
         const vs = document.getElementById('volume-slider');
-        const savedVol = localStorage.getItem('mf_music_vol')||'30';
+        const savedVol = localStorage.getItem('mf_music_vol')||'50';
         vs.value = savedVol;
         document.getElementById('volume-label').textContent = savedVol + '%';
         // ────────────────────────────────────────────────────────────────
@@ -4519,7 +4520,7 @@ class UI {
         ov.classList.add('active'); this.main.setSkillTreeState(true);
         const cont=document.getElementById('recipe-book-content');
 
-        const makeCard=(r)=>{
+        const makeCard=(r,badge)=>{
             const oc=Config.RESOURCES[r.out]?.color||'#aaa';
             const val=Config.RESOURCES[r.out]?.value||0;
             const rp=Config.RESOURCES[r.out]?.rp||0;
@@ -4541,12 +4542,20 @@ class UI {
                 +'<span class="rc-badge rc-badge-time">'+secs+'s</span>'
                 +'<span class="rc-badge rc-badge-val">$'+val+'</span>'
                 +(rp?'<span class="rc-badge rc-badge-rp">'+rp+'rp</span>':'')
+                +(badge?'<span class="rc-badge" style="background:rgba(91,170,106,0.2);color:#5aaa6a;">'+badge+'</span>':'')
                 +'</div>'
                 +'</div>';
         };
 
         const renderTab=(tab)=>{
-            cont.innerHTML=Config.RECIPES[tab].map(makeCard).join('');
+            const recipes=Config.RECIPES[tab];
+            const fastest={};
+            for (const r of recipes) { if(!fastest[r.out]||r.time<fastest[r.out]) fastest[r.out]=r.time; }
+            cont.innerHTML=recipes.map(r=>{
+                const dup=recipes.filter(x=>x.out===r.out).length>1;
+                const badge=dup&&r.time===fastest[r.out]?'Faster':'';
+                return makeCard(r,badge||null);
+            }).join('');
         };
 
         // Tab switching
@@ -4691,6 +4700,7 @@ class Game {
         this._prevSellerTotals = {};
         this._prevSellTotal = 0;
         this._lastQuantumAssemblerPos = null;
+        this._speedSteps=[0,0.5,1,2]; this._speedIdx=2;
         this.state={map:[],buildings:[],itemsBuf:null,itemCount:0,money:200,rp:0,quantumCoreCount:0,singularityCount:0};
         this.uiState={hoverTile:null,selectedTool:null,rotation:1,skillTreeOpen:false,placeFailTile:null};
         this.spawnX=null; this.spawnY=null;
@@ -5391,6 +5401,8 @@ class Game {
                 this.uiState.debugHeatmap = !this.uiState.debugHeatmap;
                 this.showToast(this.uiState.debugHeatmap ? 'Heatmap ON' : 'Heatmap OFF', null, 1500);
             }
+            else if (e.key==='[') { this._speedIdx=Math.max(0,this._speedIdx-1); this._applySpeed(); }
+            else if (e.key===']') { this._speedIdx=Math.min(this._speedSteps.length-1,this._speedIdx+1); this._applySpeed(); }
             else if (e.key==='?') document.getElementById('shortcuts-overlay').classList.toggle('active');
             else if (e.key>='1'&&e.key<='9'){
                 const tools=["mine","belt","furnace","seller","splitter","merger","belt2","belt3","assembler","lab"];
@@ -5419,6 +5431,16 @@ class Game {
         if (!this.ui.selectedTool) return;
         if (this.ui.selectedTool==="delete") this.worker.postMessage({type:'delete',x,y});
         else this.worker.postMessage({type:'place',x,y,buildingType:this.ui.selectedTool,dir:this.ui.rotation});
+    }
+    _applySpeed(){
+        const mult=this._speedSteps[this._speedIdx];
+        this.worker.postMessage({type:'speed',mult});
+        const ids=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2'];
+        document.querySelectorAll('.speed-btn').forEach(b=>{b.style.color='var(--text-dim)';b.style.background='transparent';});
+        const b=document.getElementById(ids[this._speedIdx]);
+        if(b){b.style.color='var(--text-active)';b.style.background='rgba(91,106,175,0.4)';}
+        const labels=['\u23f8 Paused','\u00bd Speed','\u25b6 Normal','\u00d72 Speed'];
+        this.showToast(labels[this._speedIdx],null,1200);
     }
     hideBuildingInfo() {
         document.getElementById('building-info-panel').style.display='none';
