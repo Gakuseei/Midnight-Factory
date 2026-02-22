@@ -4343,23 +4343,11 @@ class UI {
         ov.classList.add('active'); this.main.setSkillTreeState(true);
         const cont=document.getElementById('recipe-book-content');
 
-        // Build ingredient usage map: which items are used as inputs in any recipe
-        const _usedAsIngredient=new Set();
-        for (const tab of ['furnace','assembler','synthesizer']) {
-            if (!Config.RECIPES[tab]) continue;
-            for (const rec of Config.RECIPES[tab]) { for (const k in rec.in) _usedAsIngredient.add(k); }
-        }
-
         const makeCard=(r)=>{
             const oc=Config.RESOURCES[r.out]?.color||'#aaa';
             const val=Config.RESOURCES[r.out]?.value||0;
             const rp=Config.RESOURCES[r.out]?.rp||0;
             const secs=(r.time/1000).toFixed(1);
-            // Calculate input cost and profit
-            let inputCost=0;
-            for (const [res,amt] of Object.entries(r.in)) inputCost+=(Config.RESOURCES[res]?.value||0)*amt;
-            const profit=val-inputCost;
-            const profitPerSec=profit/(r.time/1000);
             let ings='';
             for (const [res,amt] of Object.entries(r.in)) {
                 ings+='<div class="rc-ing">'
@@ -4368,13 +4356,6 @@ class UI {
                     +'<span>'+res.replace(/_/g,' ')+'</span>'
                     +'</div>';
             }
-            // Profitability indicator
-            let profitBadge='';
-            if (profit>0) profitBadge='<span class="rc-badge" style="background:rgba(72,194,107,0.15);color:#48c26b" title="Profit: $'+profit+'/craft, $'+profitPerSec.toFixed(1)+'/s">+$'+profit+'</span>';
-            else if (profit===0) profitBadge='<span class="rc-badge" style="background:rgba(200,180,60,0.15);color:#c8b43c" title="Break-even — use as crafting ingredient">= $0</span>';
-            else profitBadge='<span class="rc-badge" style="background:rgba(220,80,80,0.15);color:#dc5050" title="Loss: $'+profit+'/craft — ingredient only">$'+profit+'</span>';
-            // Usage hint: is the output used in higher recipes?
-            let usageHint=_usedAsIngredient.has(r.out)?'<span class="rc-badge" style="background:rgba(100,140,220,0.12);color:#7aa0e0" title="Used as ingredient in other recipes">\u2699</span>':'';
             return '<div class="rc">'
                 +'<div class="rc-ingredients">'+ings+'</div>'
                 +'<div class="rc-divider"><div class="rc-line"></div><span class="rc-arrow">▼</span><div class="rc-line"></div></div>'
@@ -4384,7 +4365,6 @@ class UI {
                 +'<span class="rc-badge rc-badge-time">'+secs+'s</span>'
                 +'<span class="rc-badge rc-badge-val">$'+val+'</span>'
                 +(rp?'<span class="rc-badge rc-badge-rp">'+rp+'rp</span>':'')
-                +profitBadge+usageHint
                 +'</div>'
                 +'</div>';
         };
