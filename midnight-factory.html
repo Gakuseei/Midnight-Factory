@@ -4748,9 +4748,12 @@ class Game {
         URL.revokeObjectURL(_blobUrl);
 
         this.worker.onerror=(err)=>{
-            const _errMsg='Worker crashed: '+(err.message||'unknown error');
-            if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
-            this.showToast(_errMsg,'rgba(210,91,91,0.9)',8000);
+            if (this._inErrorHandler) return;
+            this._inErrorHandler=true;
+            try {
+                if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+                this.showToast('Worker crashed: '+(err.message||'unknown error'),'rgba(210,91,91,0.9)',8000);
+            } finally { this._inErrorHandler=false; }
         };
 
         const saved=localStorage.getItem('mf_save_'+this.seed);
@@ -5038,7 +5041,7 @@ class Game {
                 if (_db && _db.type==='mine') { _db.isDepleted=true; this.showToast('\u26cf Mine at ['+msg.x+'],['+msg.y+'] exhausted', null, 3500); }
                 else if (_db && _db.type==='vein_miner') {
                     if (_db.remainingOre!==undefined&&_db.remainingOre<=0&&_db.initialOre>0) { _db.isDepleted=true; this.showToast('\u26cf Vein Miner at ['+msg.x+'],['+msg.y+'] exhausted', null, 3500); }
-                } else if (_db) { _db.isDepleted=true; }
+                } else if (_db) { _db.isDepleted=true; this.ui.invalidateMinimap(); }
             } else if (msg.type==='place_failed') {
                 this.uiState.placeFailTile={x:msg.x,y:msg.y,at:performance.now()};
                 if(this._sfx&&!this._isDragging) this._sfx.sfx('error');
@@ -5614,6 +5617,7 @@ class Game {
         let px=cx+12, py=cy+12;
         if (px+pw>window.innerWidth) px=cx-pw-12;
         if (py+ph>window.innerHeight) py=cy-ph-12;
+        px=Math.max(0,px); py=Math.max(0,py);
         panel.style.left=px+'px'; panel.style.top=py+'px';
     }
     _drawBlueprintOverlay() {
