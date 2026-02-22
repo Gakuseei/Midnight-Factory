@@ -597,10 +597,10 @@ function emitSave() {
         sparseBuildings[ab.y+","+ab.x] = ab.b;
     }
     const oreData = {};
+    // Save ALL mined cells including depleted (amt=0) so they stay null on reload
     for (const key of state.minedCells) {
         const [sy, sx] = key.split(',').map(Number);
-        var _oreAmt = state.oreAmounts[sy][sx];
-        if (_oreAmt > 0) oreData[key] = _oreAmt;
+        oreData[key] = state.oreAmounts[sy][sx];
     }
     var _saveObj = { version:SAVE_VERSION, money:state.money, rp:state.rp,
         sparseBuildings:sparseBuildings, unlockedTechs:Array.from(state.unlockedTechs), oreData:oreData,
@@ -610,7 +610,7 @@ function emitSave() {
     postMessage({ type:'save_game', data:_saveObj, json:JSON.stringify(_saveObj) });
 }
 
-var SAVE_VERSION = 2;
+var SAVE_VERSION = 3;
 function migrateSave(data) {
     if (!data) return data;
     var v = data.version || 1;
@@ -627,6 +627,19 @@ function migrateSave(data) {
         if (!data.sparseBuildings) data.sparseBuildings = {};
         if (!data.oreData) data.oreData = {};
         data.version = 2;
+    }
+    // v2 -> v3: oreData now includes depleted tiles (amt=0)
+    // Old v2 saves may be missing depleted entries — backfill from mine buildings
+    if (v < 3) {
+        if (data.sparseBuildings && data.oreData) {
+            for (var _mk in data.sparseBuildings) {
+                var _mb = data.sparseBuildings[_mk];
+                if (_mb.type === 'mine' && !(_mk in data.oreData)) {
+                    data.oreData[_mk] = 0;
+                }
+            }
+        }
+        data.version = 3;
     }
     return data;
 }
@@ -691,6 +704,14 @@ self.onmessage = function(e) {
                     for (var _vtk = 0; _vtk < _vmb2.veinTiles.length; _vtk++) _vmRem2 += state.oreAmounts[_vmb2.veinTiles[_vtk].y][_vmb2.veinTiles[_vtk].x];
                     _vmb2.remainingOre = _vmRem2;
                     if (!_vmb2.initialOre) _vmb2.initialOre = _vmRem2;
+                }
+            }
+            // Post-load integrity: verify mine buildings sit on valid ore tiles
+            for (var _ic = state.activeBuildings.length - 1; _ic >= 0; _ic--) {
+                var _icb = state.activeBuildings[_ic];
+                if (_icb.b.type === 'mine' && (!state.map[_icb.y] || !state.map[_icb.y][_icb.x])) {
+                    state.buildings[_icb.y][_icb.x] = null;
+                    state.activeBuildings.splice(_ic, 1);
                 }
             }
             postMessage({ type:'init_done', map:state.map, money:state.money, rp:state.rp,
