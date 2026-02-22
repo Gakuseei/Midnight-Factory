@@ -298,7 +298,7 @@ kbd.shortcut-key {
     <div id="volume-slider-wrap">
       <span id="volume-label">30%</span>
       <input id="volume-slider" type="range" min="0" max="100" value="30" title="Volume">
-      <span>🔇</span>
+      <span>&#9724;</span>
     </div>
   </div>
   <div id="vfx-btn" class="circle-btn" title="Toggle Particles">
@@ -415,13 +415,13 @@ kbd.shortcut-key {
 <div id="building-info-panel" class="panel" style="display:none;position:absolute;z-index:200;min-width:180px;max-width:240px;pointer-events:auto;"></div>
 <div id="recipe-book-overlay">
   <div class="rb-header">
-    <span class="rb-title">📖 Recipe Book</span>
+    <span class="rb-title">&#9776; Recipe Book</span>
     <div id="close-recipe-btn" class="close-btn" style="position:static;width:28px;height:28px;font-size:14px;line-height:28px;">✕</div>
   </div>
   <div class="rb-tabs">
-    <button class="rb-tab active" data-tab="furnace">🔥 Furnace</button>
-    <button class="rb-tab" data-tab="assembler">⚙️ Assembler</button>
-    <button class="rb-tab" data-tab="synthesizer">🔮 Synthesizer</button>
+    <button class="rb-tab active" data-tab="furnace">&#9830; Furnace</button>
+    <button class="rb-tab" data-tab="assembler">&#9881; Assembler</button>
+    <button class="rb-tab" data-tab="synthesizer">&#9671; Synthesizer</button>
   </div>
   <div id="recipe-book-content" class="rb-list"></div>
 </div>
@@ -4033,24 +4033,24 @@ class UI {
     setupBuildMenu() {
         this.buildContainer.innerHTML='';
         const tools=[
-            {id:"mine",icon:"⛏️",name:"Mine",cost:Config.BUILD_COSTS.mine,req:null},
+            {id:"mine",icon:"\u26CF",name:"Mine",cost:Config.BUILD_COSTS.mine,req:null},
             {id:"belt",icon:"→",name:"Belt",cost:Config.BUILD_COSTS.belt,req:null},
-            {id:"furnace",icon:"🔥",name:"Furnace",cost:Config.BUILD_COSTS.furnace,req:null},
-            {id:"seller",icon:"💰",name:"Seller",cost:Config.BUILD_COSTS.seller,req:null},
+            {id:"furnace",icon:"\u2666",name:"Furnace",cost:Config.BUILD_COSTS.furnace,req:null},
+            {id:"seller",icon:"\u00A4",name:"Seller",cost:Config.BUILD_COSTS.seller,req:null},
             {id:"splitter",icon:"⑂",name:"Splitter",cost:Config.BUILD_COSTS.splitter,req:"mechanics"},
             {id:"merger",icon:"⑃",name:"Merger",cost:Config.BUILD_COSTS.merger,req:"mechanics"},
             {id:"tunnel_in",icon:"\u2193\u2B24",name:"Tunnel In",cost:Config.BUILD_COSTS.tunnel_in,req:"mechanics"},
             {id:"tunnel_out",icon:"\u2B24\u2191",name:"Tunnel Out",cost:Config.BUILD_COSTS.tunnel_out,req:"mechanics"},
             {id:"belt2",icon:"⇉",name:"Fast Belt",cost:Config.BUILD_COSTS.belt2,req:"fast_belts"},
             {id:"belt3",icon:"⇶",name:"Exp. Belt",cost:Config.BUILD_COSTS.belt3,req:"express_belts"},
-            {id:"assembler",icon:"⚙️",name:"Assembler",cost:Config.BUILD_COSTS.assembler,req:"steel_prod"},
-            {id:"lab",icon:"🧪",name:"Lab",cost:Config.BUILD_COSTS.lab,req:null},
-            {id:"vein_miner",icon:"⛏️",name:"Vein Miner",cost:Config.BUILD_COSTS.vein_miner,req:"vein_mining"},
-            {id:"ore_synthesizer",icon:"🧬",name:"Ore Synth",cost:Config.BUILD_COSTS.ore_synthesizer,req:"ore_synthesis"},
-            {id:"synthesizer",icon:"🔮",name:"Synthesizer",cost:Config.BUILD_COSTS.synthesizer,req:"deep_synthesis"}
+            {id:"assembler",icon:"\u2699",name:"Assembler",cost:Config.BUILD_COSTS.assembler,req:"steel_prod"},
+            {id:"lab",icon:"\u2261",name:"Lab",cost:Config.BUILD_COSTS.lab,req:null},
+            {id:"vein_miner",icon:"\u26CF",name:"Vein Miner",cost:Config.BUILD_COSTS.vein_miner,req:"vein_mining"},
+            {id:"ore_synthesizer",icon:"\u2A01",name:"Ore Synth",cost:Config.BUILD_COSTS.ore_synthesizer,req:"ore_synthesis"},
+            {id:"synthesizer",icon:"\u25C7",name:"Synthesizer",cost:Config.BUILD_COSTS.synthesizer,req:"deep_synthesis"}
         ];
         const del=document.createElement('button'); del.className='build-btn';
-        del.innerHTML='<div class="build-icon" style="font-size:18px">🗑️</div><div class="build-name">Delete</div>';
+        del.innerHTML='<div class="build-icon" style="font-size:18px">\u2715</div><div class="build-name">Delete</div>';
         del.onmousedown=()=>{if(this.main._sfx) this.main._sfx.sfx('ui_click');};
         del.onclick=()=>this.selectTool("delete"); this.buildContainer.appendChild(del);
         tools.forEach(t=>{
@@ -5588,7 +5588,7 @@ class Game {
             belt:   '\u2192 Drag a Belt from the Mine output to route items',
             seller: '\u2713 Connect belt to a Seller (\uFF04) to earn Credits',
             stuck:  '\u21ba Make sure Mine output arrow points toward the belt',
-            lab:    '\u{1F9EA} Build a Lab and route items to it \u2014 earns Research Points',
+            lab:    '\u2261 Build a Lab and route items to it \u2014 earns Research Points',
             tree:   'T opens the Skill Tree \u2014 spend RP to unlock upgrades'
         };
         if (!hints[id]) return;
