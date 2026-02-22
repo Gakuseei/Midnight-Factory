@@ -1729,51 +1729,51 @@ const Config = {
     ],
     SKILL_TREE: {
         tier1: {
-            mechanics: {id:"mechanics",name:"Basic Mechanics",costRP:20,costCr:200,unlocks:["splitter","merger","tunnel_in","tunnel_out"],desc:"Unlock Splitters, Mergers and Tunnels.",req:[],x:60,y:130},
-            steel_prod: {id:"steel_prod",name:"Steel Production",costRP:50,costCr:500,unlocks:["assembler","steel"],desc:"Unlock the Assembler.",req:[],x:60,y:450}
+            mechanics: {id:"mechanics",name:"Basic Mechanics",costRP:20,costCr:200,unlocks:["splitter","merger","tunnel_in","tunnel_out"],desc:"Unlock Splitters, Mergers and Tunnels.",tag:"+Splitter, Merger",req:[],x:60,y:130},
+            steel_prod: {id:"steel_prod",name:"Steel Production",costRP:50,costCr:500,unlocks:["assembler","steel"],desc:"Unlock the Assembler.",tag:"+Assembler",req:[],x:60,y:450}
         },
         tier2: {
-            smart_logistics: {id:"smart_logistics",name:"Fast Logistics",costRP:60,costCr:600,unlocks:[],desc:"All belts run 20% faster globally.",req:["mechanics"],x:320,y:50},
-            fast_belts: {id:"fast_belts",name:"Fast Belts",costRP:100,costCr:1000,unlocks:["belt2"],desc:"A faster belt variant.",req:["mechanics"],x:320,y:130},
-            electronics: {id:"electronics",name:"Basic Electronics",costRP:150,costCr:1500,unlocks:["copper_wire","circuit"],desc:"Assemble circuits.",req:["steel_prod"],x:320,y:450},
-            bulk_trade: {id:"bulk_trade",name:"Market Expansion",costRP:75,costCr:750,unlocks:[],desc:"All items sell for +30% more.",req:["steel_prod"],x:320,y:370}
+            smart_logistics: {id:"smart_logistics",name:"Fast Logistics",costRP:60,costCr:600,unlocks:[],desc:"All belts run 20% faster globally.",tag:"+20% belt speed",req:["mechanics"],x:320,y:50},
+            fast_belts: {id:"fast_belts",name:"Fast Belts",costRP:100,costCr:1000,unlocks:["belt2"],desc:"A faster belt variant.",tag:"+Fast Belt",req:["mechanics"],x:320,y:130},
+            electronics: {id:"electronics",name:"Basic Electronics",costRP:150,costCr:1500,unlocks:["copper_wire","circuit"],desc:"Assemble circuits.",tag:"+Circuit recipe",req:["steel_prod"],x:320,y:450},
+            bulk_trade: {id:"bulk_trade",name:"Market Expansion",costRP:75,costCr:750,unlocks:[],desc:"All items sell for +30% more.",tag:"+30% sell value",req:["steel_prod"],x:320,y:370}
         },
         tier3: {
-            express_belts: {id:"express_belts",name:"Express Belts",costRP:450,costCr:7000,unlocks:["belt3"],desc:"The fastest belt variant.",req:["fast_belts"],x:580,y:50},
-            deep_mining: {id:"deep_mining",name:"Deep Mining",costRP:300,costCr:5000,unlocks:["gold_ore","crystal","silicon"],desc:"Unlock mining of Gold, Crystal and Silicon deposits.",req:["fast_belts","electronics"],x:580,y:290},
-            advanced_assembly: {id:"advanced_assembly",name:"Advanced Assembly",costRP:450,costCr:8000,unlocks:["processor"],desc:"Prerequisite for Quantum Technology. Required for the research chain.",req:["electronics"],x:580,y:450},
-            lab_boost: {id:"lab_boost",name:"Lab Automation",costRP:200,costCr:3000,unlocks:[],desc:"Labs generate 2x Research Points per item.",req:["electronics"],x:580,y:530},
-            lab_speed: {id:"lab_speed",name:"Lab Efficiency",costRP:150,costCr:2000,unlocks:[],desc:"Labs generate 50% more RP per item. Stacks with Lab Automation.",req:["electronics"],x:580,y:370},
-            vein_mining: {id:"vein_mining",name:"Vein Mining",costRP:350,costCr:5000,unlocks:["vein_miner"],desc:"Unlock Vein Miner. Mines an entire connected ore vein from a single building.",req:["deep_mining"],x:580,y:210}
+            express_belts: {id:"express_belts",name:"Express Belts",costRP:450,costCr:7000,unlocks:["belt3"],desc:"The fastest belt variant.",tag:"+Express Belt",req:["fast_belts"],x:580,y:50},
+            deep_mining: {id:"deep_mining",name:"Deep Mining",costRP:300,costCr:5000,unlocks:["gold_ore","crystal","silicon"],desc:"Unlock mining of Gold, Crystal and Silicon deposits.",tag:"+Gold, Crystal, Si",req:["fast_belts","electronics"],x:580,y:290},
+            advanced_assembly: {id:"advanced_assembly",name:"Advanced Assembly",costRP:450,costCr:8000,unlocks:["processor"],desc:"Prerequisite for Quantum Technology. Required for the research chain.",tag:"+Processor recipe",req:["electronics"],x:580,y:450},
+            lab_boost: {id:"lab_boost",name:"Lab Automation",costRP:200,costCr:3000,unlocks:[],desc:"Labs generate 2x Research Points per item.",tag:"2x Lab RP",req:["electronics"],x:580,y:530},
+            lab_speed: {id:"lab_speed",name:"Lab Efficiency",costRP:150,costCr:2000,unlocks:[],desc:"Labs generate 50% more RP per item. Stacks with Lab Automation.",tag:"+50% Lab RP",req:["electronics"],x:580,y:370},
+            vein_mining: {id:"vein_mining",name:"Vein Mining",costRP:350,costCr:5000,unlocks:["vein_miner"],desc:"Unlock Vein Miner. Mines an entire connected ore vein from a single building.",tag:"+Vein Miner",req:["deep_mining"],x:580,y:210}
         },
         tier4: {
-            power_mining: {id:"power_mining",name:"Power Mining",costRP:350,costCr:5500,unlocks:[],desc:"Mine cycle time halved. Stacks with Material Science.",req:["express_belts"],x:840,y:50},
-            mass_production: {id:"mass_production",name:"Mass Production",costRP:1000,costCr:16000,unlocks:[],desc:"All machines (furnace, assembler) run 25% faster.",req:["deep_mining","advanced_assembly"],x:840,y:370},
-            material_science: {id:"material_science",name:"Material Science",costRP:700,costCr:12000,unlocks:[],desc:"Mine speed +33%, Furnace speed +30%.",req:["deep_mining"],x:840,y:290},
-            quantum_tech: {id:"quantum_tech",name:"Quantum Technology",costRP:1200,costCr:20000,unlocks:["quantum_core"],desc:"The pinnacle of computing.",req:["deep_mining","advanced_assembly"],x:840,y:450},
-            gold_refining: {id:"gold_refining",name:"Gold Refining",costRP:500,costCr:8000,unlocks:[],desc:"Gold smelting -40% time. Gold ingot sell value +25%.",req:["deep_mining"],x:840,y:210},
-            research_grant: {id:"research_grant",name:"Research Grant",costRP:300,costCr:0,unlocks:[],desc:"Sell value +8%. Pure RP investment.",req:["lab_boost"],x:840,y:530}
+            power_mining: {id:"power_mining",name:"Power Mining",costRP:350,costCr:5500,unlocks:[],desc:"Mine cycle time halved. Stacks with Material Science.",tag:"-50% mine time",req:["express_belts"],x:840,y:50},
+            mass_production: {id:"mass_production",name:"Mass Production",costRP:1000,costCr:16000,unlocks:[],desc:"All machines (furnace, assembler) run 25% faster.",tag:"+25% machines",req:["deep_mining","advanced_assembly"],x:840,y:370},
+            material_science: {id:"material_science",name:"Material Science",costRP:700,costCr:12000,unlocks:[],desc:"Mine speed +33%, Furnace speed +30%.",tag:"+33% mine, +30% furnace",req:["deep_mining"],x:840,y:290},
+            quantum_tech: {id:"quantum_tech",name:"Quantum Technology",costRP:1200,costCr:20000,unlocks:["quantum_core"],desc:"The pinnacle of computing.",tag:"+Quantum Core",req:["deep_mining","advanced_assembly"],x:840,y:450},
+            gold_refining: {id:"gold_refining",name:"Gold Refining",costRP:500,costCr:8000,unlocks:[],desc:"Gold smelting -40% time. Gold ingot sell value +25%.",tag:"-40% gold smelt",req:["deep_mining"],x:840,y:210},
+            research_grant: {id:"research_grant",name:"Research Grant",costRP:300,costCr:0,unlocks:[],desc:"Sell value +8%. Pure RP investment.",tag:"+8% sell value",req:["lab_boost"],x:840,y:530}
         },
         tier5: {
-            overclock: {id:"overclock",name:"Overclock",costRP:3000,costCr:50000,unlocks:[],desc:"All belts 50% faster. Stacks with Fast Logistics (+80% total).",req:["mass_production"],x:1100,y:370},
-            nano_tech: {id:"nano_tech",name:"Nano Technology",costRP:2000,costCr:30000,unlocks:[],desc:"Assembler speed +40%.",req:["material_science","advanced_assembly"],x:1100,y:290},
-            singularity: {id:"singularity",name:"Singularity",costRP:4000,costCr:65000,unlocks:[],desc:"Sell value +60%. Stacks with Market Expansion.",req:["quantum_tech"],x:1100,y:450},
-            energy_mastery: {id:"energy_mastery",name:"Energy Mastery",costRP:1500,costCr:22000,unlocks:[],desc:"Energy Cell assembly time -35%.",req:["power_mining"],x:1100,y:50},
-            belt_upgrade: {id:"belt_upgrade",name:"Belt Upgrade",costRP:800,costCr:12000,unlocks:[],desc:"Right-click a belt to upgrade to the next grade. Costs the price difference.",req:["fast_belts"],x:1100,y:130},
-            exotic_mining: {id:"exotic_mining",name:"Exotic Mining",costRP:2500,costCr:40000,unlocks:["titanium_ore","nebula_dust"],desc:"Unlock mining of Titanium and Nebula Dust deposits at the map edges.",req:["deep_mining","quantum_tech"],x:1100,y:530},
-            ore_synthesis: {id:"ore_synthesis",name:"Ore Synthesis",costRP:2000,costCr:30000,unlocks:["ore_synthesizer"],desc:"Unlock the Ore Synthesizer. Converts Energy Cells into raw ores when natural deposits run out.",req:["quantum_tech"],x:1100,y:610}
+            overclock: {id:"overclock",name:"Overclock",costRP:3000,costCr:50000,unlocks:[],desc:"All belts 50% faster. Stacks with Fast Logistics (+80% total).",tag:"+50% belt speed",req:["mass_production"],x:1100,y:370},
+            nano_tech: {id:"nano_tech",name:"Nano Technology",costRP:2000,costCr:30000,unlocks:[],desc:"Assembler speed +40%.",tag:"+40% assembler",req:["material_science","advanced_assembly"],x:1100,y:290},
+            singularity: {id:"singularity",name:"Singularity",costRP:4000,costCr:65000,unlocks:[],desc:"Sell value +60%. Stacks with Market Expansion.",tag:"+60% sell value",req:["quantum_tech"],x:1100,y:450},
+            energy_mastery: {id:"energy_mastery",name:"Energy Mastery",costRP:1500,costCr:22000,unlocks:[],desc:"Energy Cell assembly time -35%.",tag:"-35% energy cell",req:["power_mining"],x:1100,y:50},
+            belt_upgrade: {id:"belt_upgrade",name:"Belt Upgrade",costRP:800,costCr:12000,unlocks:[],desc:"Right-click a belt to upgrade to the next grade. Costs the price difference.",tag:"+Belt right-click",req:["fast_belts"],x:1100,y:130},
+            exotic_mining: {id:"exotic_mining",name:"Exotic Mining",costRP:2500,costCr:40000,unlocks:["titanium_ore","nebula_dust"],desc:"Unlock mining of Titanium and Nebula Dust deposits at the map edges.",tag:"+Titanium, Nebula",req:["deep_mining","quantum_tech"],x:1100,y:530},
+            ore_synthesis: {id:"ore_synthesis",name:"Ore Synthesis",costRP:2000,costCr:30000,unlocks:["ore_synthesizer"],desc:"Unlock the Ore Synthesizer. Converts Energy Cells into raw ores when natural deposits run out.",tag:"+Ore Synthesizer",req:["quantum_tech"],x:1100,y:610}
         },
         tier6: {
-            rp_overclock_2: {id:"rp_overclock_2",name:"Hyperclock",costRP:2000,costCr:0,unlocks:[],desc:"All belts +20% faster. Stacks with Overclock.",req:["overclock"],x:1360,y:370},
-            rp_trade_1: {id:"rp_trade_1",name:"Market Insight I",costRP:500,costCr:0,unlocks:[],desc:"Sell value +10%. Pure RP investment.",req:["singularity"],x:1360,y:450},
-            rp_trade_2: {id:"rp_trade_2",name:"Market Insight II",costRP:1500,costCr:0,unlocks:[],desc:"Sell value +10% again. Stacks with Market Insight I.",req:["rp_trade_1"],x:1620,y:450},
-            alloy_mastery: {id:"alloy_mastery",name:"Alloy Mastery",costRP:2200,costCr:0,unlocks:[],desc:"Assembler speed +20% additional. Pure RP investment.",req:["nano_tech"],x:1360,y:290},
-            deep_synthesis: {id:"deep_synthesis",name:"Deep Synthesis",costRP:5000,costCr:80000,unlocks:["synthesizer"],desc:"Unlock the Synthesizer. Forge Singularity Shards from quantum materials.",req:["exotic_mining","nano_tech"],x:1360,y:530},
-            titan_smelting: {id:"titan_smelting",name:"Titan Smelting",costRP:1500,costCr:0,unlocks:[],desc:"Titanium smelting -40%. Titan Alloy assembly -20%.",req:["exotic_mining"],x:1360,y:610}
+            rp_overclock_2: {id:"rp_overclock_2",name:"Hyperclock",costRP:2000,costCr:0,unlocks:[],desc:"All belts +20% faster. Stacks with Overclock.",tag:"+20% belt speed",req:["overclock"],x:1360,y:370},
+            rp_trade_1: {id:"rp_trade_1",name:"Market Insight I",costRP:500,costCr:0,unlocks:[],desc:"Sell value +10%. Pure RP investment.",tag:"+10% sell value",req:["singularity"],x:1360,y:450},
+            rp_trade_2: {id:"rp_trade_2",name:"Market Insight II",costRP:1500,costCr:0,unlocks:[],desc:"Sell value +10% again. Stacks with Market Insight I.",tag:"+10% sell value",req:["rp_trade_1"],x:1620,y:450},
+            alloy_mastery: {id:"alloy_mastery",name:"Alloy Mastery",costRP:2200,costCr:0,unlocks:[],desc:"Assembler speed +20% additional. Pure RP investment.",tag:"+20% assembler",req:["nano_tech"],x:1360,y:290},
+            deep_synthesis: {id:"deep_synthesis",name:"Deep Synthesis",costRP:5000,costCr:80000,unlocks:["synthesizer"],desc:"Unlock the Synthesizer. Forge Singularity Shards from quantum materials.",tag:"+Synthesizer",req:["exotic_mining","nano_tech"],x:1360,y:530},
+            titan_smelting: {id:"titan_smelting",name:"Titan Smelting",costRP:1500,costCr:0,unlocks:[],desc:"Titanium smelting -40%. Titan Alloy assembly -20%.",tag:"-40% titan smelt",req:["exotic_mining"],x:1360,y:610}
         },
         tier7: {
-            synthesis_mastery: {id:"synthesis_mastery",name:"Synthesis Mastery",costRP:5500,costCr:0,unlocks:[],desc:"Synthesizer speed +30%. Pure RP investment.",req:["deep_synthesis"],x:1620,y:530},
-            nebula_resonance: {id:"nebula_resonance",name:"Nebula Resonance",costRP:4500,costCr:0,unlocks:[],desc:"Plasma Coil sell value +50%. Singularity Shard RP x2.",req:["deep_synthesis"],x:1620,y:610}
+            synthesis_mastery: {id:"synthesis_mastery",name:"Synthesis Mastery",costRP:5500,costCr:0,unlocks:[],desc:"Synthesizer speed +30%. Pure RP investment.",tag:"+30% synthesizer",req:["deep_synthesis"],x:1620,y:530},
+            nebula_resonance: {id:"nebula_resonance",name:"Nebula Resonance",costRP:4500,costCr:0,unlocks:[],desc:"Plasma Coil sell value +50%. Singularity Shard RP x2.",tag:"+50% plasma sell",req:["deep_synthesis"],x:1620,y:610}
         }
     }
 };
@@ -4467,18 +4467,23 @@ class UI {
         if (hit) {
             const n=hit.node, nv=hit.vis;
             if (nv==='upcoming') {
-                this.skillCanvas.style.cursor='default'; tt.style.display='block';
-                tt.style.left=(x+15)+'px'; tt.style.top=(y+15)+'px';
+                this.skillCanvas.style.cursor='default';
                 tt.innerHTML='<div class="tooltip-title">'+n.name+'</div><div class="tooltip-desc">'+n.desc+'</div>'
                     +'<div class="tooltip-req">Requires: '+n.req.map(r=>Config.SKILL_TREE[this.findTier(r)][r].name).join(', ')+'</div>';
             } else {
-                this.skillCanvas.style.cursor='pointer'; tt.style.display='block';
-                tt.style.left=(x+15)+'px'; tt.style.top=(y+15)+'px';
+                this.skillCanvas.style.cursor='pointer';
                 const un=nv==='unlocked', mr=n.req.every(r=>this.unlockedTechs.has(r));
                 tt.innerHTML='<div class="tooltip-title">'+n.name+'</div><div class="tooltip-desc">'+n.desc+'</div>'
                     +(!mr?'<div class="tooltip-req">Requires: '+n.req.map(r=>Config.SKILL_TREE[this.findTier(r)][r].name).join(', ')+'</div>':'')
                     +(un?'<div class="tooltip-req" style="color:var(--sell)">\u2713 Unlocked</div>':'<div class="tooltip-cost"><span class="cost-rp">'+n.costRP+' RP</span><span class="cost-cr">$'+n.costCr+'</span></div>');
             }
+            tt.style.display='block';
+            let tx=x+15, ty=y+15;
+            const tw=tt.offsetWidth, th=tt.offsetHeight;
+            if(tx+tw>window.innerWidth) tx=x-tw-15;
+            if(ty+th>window.innerHeight) ty=y-th-15;
+            tx=Math.max(0,tx); ty=Math.max(0,ty);
+            tt.style.left=tx+'px'; tt.style.top=ty+'px';
         } else { this.skillCanvas.style.cursor='grab'; tt.style.display='none'; }
     }
     handleSkillClick(x,y) {
@@ -4613,10 +4618,10 @@ class UI {
         ctx.stroke();
         // ── Section backgrounds (only if section has visible nodes) ──────────
         const sections=[
-            {label:'LOGISTICS',y1:10,y2:175,color:'rgba(91,140,200,0.04)',border:'rgba(91,140,200,0.12)',tc:'rgba(91,160,220,0.45)'},
-            {label:'EXTRACTION',y1:185,y2:335,color:'rgba(80,170,100,0.04)',border:'rgba(80,170,100,0.12)',tc:'rgba(80,190,110,0.45)'},
-            {label:'PRODUCTION',y1:345,y2:500,color:'rgba(200,160,60,0.04)',border:'rgba(200,160,60,0.12)',tc:'rgba(210,175,70,0.45)'},
-            {label:'DEEP SYNTHESIS',y1:510,y2:660,color:'rgba(180,140,255,0.04)',border:'rgba(180,140,255,0.12)',tc:'rgba(180,140,255,0.45)'}
+            {label:'LOGISTICS',y1:10,y2:175,color:'rgba(91,140,200,0.04)',border:'rgba(91,140,200,0.12)',tc:'rgba(91,160,220,0.7)'},
+            {label:'EXTRACTION',y1:185,y2:335,color:'rgba(80,170,100,0.04)',border:'rgba(80,170,100,0.12)',tc:'rgba(80,190,110,0.7)'},
+            {label:'PRODUCTION',y1:345,y2:500,color:'rgba(200,160,60,0.04)',border:'rgba(200,160,60,0.12)',tc:'rgba(210,175,70,0.7)'},
+            {label:'DEEP SYNTHESIS',y1:510,y2:660,color:'rgba(180,140,255,0.04)',border:'rgba(180,140,255,0.12)',tc:'rgba(180,140,255,0.7)'}
         ];
         for (const s of sections) {
             let hasVisible=false;
@@ -4631,12 +4636,12 @@ class UI {
             ctx.strokeStyle=s.border; ctx.lineWidth=1; ctx.setLineDash([6,6]);
             ctx.beginPath(); ctx.roundRect(-60,s.y1,1920,s.y2-s.y1,6); ctx.stroke();
             ctx.setLineDash([]);
-            ctx.font='bold 10px Fira Code'; ctx.fillStyle=s.tc;
+            ctx.font='bold 11px Fira Code'; ctx.fillStyle=s.tc;
             ctx.textAlign='right'; ctx.fillText(s.label,-72,(s.y1+s.y2)/2+4);
         }
         ctx.textAlign='left';
         // ── Column depth labels (only if column has visible nodes) ───────────
-        const cols=[{x:60,label:'I'},{x:320,label:'II'},{x:580,label:'III'},{x:840,label:'IV'},{x:1100,label:'V'},{x:1360,label:'VI'},{x:1620,label:'VII'}];
+        const cols=[{x:60,label:'TIER 1'},{x:320,label:'TIER 2'},{x:580,label:'TIER 3'},{x:840,label:'TIER 4'},{x:1100,label:'TIER 5'},{x:1360,label:'TIER 6'},{x:1620,label:'TIER 7'}];
         for (const c of cols) {
             let hasVisible=false;
             for (const t in Config.SKILL_TREE) for (const k in Config.SKILL_TREE[t]) {
@@ -4694,25 +4699,30 @@ class UI {
                 ctx.globalAlpha=0.5; ctx.fillStyle="#6b7c9e"; ctx.font="bold 14px Quicksand";
                 ctx.fillText(node.name,node.x+15,node.y+25);
                 ctx.font="11px Fira Code"; ctx.fillStyle="rgba(91,106,175,0.4)";
-                ctx.fillText("\u2022\u2022\u2022",node.x+15,node.y+45);
+                ctx.fillText("Locked",node.x+15,node.y+45);
                 ctx.globalAlpha=1.0;
                 continue;
             }
             const un=nv==='unlocked', ca=nv==='available';
+            const canAfford=ca&&this.main.state.money>=node.costCr&&this.main.state.rp>=node.costRP;
             const g=ctx.createLinearGradient(node.x,node.y,node.x+180,node.y+60);
             if (un){g.addColorStop(0,"rgba(50,100,60,0.9)");g.addColorStop(1,"rgba(20,50,30,0.9)");ctx.strokeStyle=Config.COLORS.sell;}
+            else if (ca&&canAfford){g.addColorStop(0,"rgba(40,70,55,0.9)");g.addColorStop(1,"rgba(20,40,30,0.9)");ctx.strokeStyle="#5aaa6a";}
             else if (ca){g.addColorStop(0,"rgba(40,50,80,0.9)");g.addColorStop(1,"rgba(20,25,40,0.9)");ctx.strokeStyle="#8ca0dc";}
             else{g.addColorStop(0,"rgba(15,17,26,0.9)");g.addColorStop(1,"rgba(10,12,18,0.9)");ctx.strokeStyle="rgba(60,70,100,0.4)";}
             ctx.fillStyle=g; ctx.lineWidth=2; ctx.beginPath(); ctx.roundRect(node.x,node.y,180,60,12); ctx.fill(); ctx.stroke();
             if (ca) {
                 const pulse=0.3+0.3*Math.sin(now*0.003);
-                ctx.save(); ctx.strokeStyle="rgba(140,180,255,"+pulse+")"; ctx.lineWidth=2.5;
+                ctx.save(); ctx.strokeStyle=canAfford?"rgba(100,200,140,"+pulse+")":"rgba(140,180,255,"+pulse+")"; ctx.lineWidth=2.5;
                 ctx.beginPath(); ctx.roundRect(node.x-1,node.y-1,182,62,13); ctx.stroke(); ctx.restore();
+            }
+            if (node.unlocks&&node.unlocks.length>0) {
+                ctx.save(); ctx.fillStyle='#5aaa6a'; ctx.beginPath(); ctx.arc(node.x+166,node.y+12,4,0,Math.PI*2); ctx.fill(); ctx.restore();
             }
             ctx.fillStyle=un?"#fff":ca?"#e2e8f0":"#6b7c9e"; ctx.font="bold 14px Quicksand";
             ctx.fillText(node.name,node.x+15,node.y+25);
             if (!un){ctx.font="11px Fira Code";ctx.fillStyle=Config.COLORS.research;ctx.fillText(node.costRP+' RP',node.x+15,node.y+45);if(node.costCr>0){ctx.fillStyle=Config.COLORS.gold;ctx.fillText('$'+node.costCr,node.x+75,node.y+45);}else{ctx.fillStyle='rgba(91,106,175,0.5)';ctx.fillText('RP only',node.x+75,node.y+45);}}
-            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;ctx.fillText("\u2713 Unlocked",node.x+15,node.y+45);}
+            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;let _tagTxt=node.tag?"\u2713 "+node.tag:"\u2713 Unlocked";const _tw=ctx.measureText(_tagTxt).width;if(_tw>155){while(ctx.measureText(_tagTxt+"\u2026").width>155&&_tagTxt.length>2)_tagTxt=_tagTxt.slice(0,-1);_tagTxt+="\u2026";}ctx.fillText(_tagTxt,node.x+15,node.y+45);}
         }
         ctx.restore();
     }
