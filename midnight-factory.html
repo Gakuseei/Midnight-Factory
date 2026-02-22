@@ -4425,22 +4425,27 @@ class UI {
             for (const r of node.req) {
                 const rt=this.findTier(r); if (!rt) continue;
                 const rn=Config.SKILL_TREE[rt][r]; if (!rn) continue;
-                ctx.beginPath(); ctx.moveTo(rn.x+180,rn.y+30);
-                ctx.bezierCurveTo(rn.x+220,rn.y+30,node.x-40,node.y+30,node.x,node.y+30);
-                const bu=this.unlockedTechs.has(key)&&this.unlockedTechs.has(r);
-                ctx.strokeStyle=bu?Config.COLORS.sell:"rgba(91,106,175,0.4)"; ctx.lineWidth=bu?3:2;
-                ctx.shadowColor=bu?Config.COLORS.sell:"transparent"; ctx.shadowBlur=bu?10:0;
-                ctx.stroke();
-                // arrowhead at endpoint
-                const ax=node.x,ay=node.y+30,dx=ax-(node.x-40),dy=ay-(node.y+30);
-                const ang=Math.atan2(dy,dx),sz=bu?7:5;
-                ctx.fillStyle=ctx.strokeStyle;
+                const sx=rn.x+180,sy=rn.y+30,tx=node.x,ty=node.y+30;
+                const ru=this.unlockedTechs.has(r),nu=this.unlockedTechs.has(key);
+                if(ru&&nu){ctx.strokeStyle=Config.COLORS.sell;ctx.lineWidth=2;ctx.shadowColor=Config.COLORS.sell;ctx.shadowBlur=4;}
+                else if(ru){ctx.strokeStyle="rgba(140,160,220,0.45)";ctx.lineWidth=1.5;ctx.shadowBlur=0;}
+                else{ctx.strokeStyle="rgba(91,106,175,0.15)";ctx.lineWidth=1;ctx.shadowBlur=0;ctx.setLineDash([4,4]);}
+                let ahx=tx,ahy=ty,ahAng=0;
                 ctx.beginPath();
-                ctx.moveTo(ax,ay);
-                ctx.lineTo(ax-sz*Math.cos(ang-0.45),ay-sz*Math.sin(ang-0.45));
-                ctx.lineTo(ax-sz*Math.cos(ang+0.45),ay-sz*Math.sin(ang+0.45));
-                ctx.closePath(); ctx.fill();
-                ctx.shadowBlur=0;
+                if(rn.x===node.x){
+                    const rx=rn.x+215;
+                    ctx.moveTo(sx,sy);ctx.bezierCurveTo(rx,sy,rx,ty,node.x+180,ty);
+                    ahx=node.x+180;ahy=ty;ahAng=Math.PI;
+                }else{
+                    const gap=tx-sx,cpx=Math.max(30,Math.abs(gap)*0.4);
+                    ctx.moveTo(sx,sy);ctx.bezierCurveTo(sx+cpx,sy,tx-cpx,ty,tx,ty);
+                }
+                ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=0;
+                const sz=(ru&&nu)?6:4;
+                ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.moveTo(ahx,ahy);
+                ctx.lineTo(ahx-sz*Math.cos(ahAng-0.4),ahy-sz*Math.sin(ahAng-0.4));
+                ctx.lineTo(ahx-sz*Math.cos(ahAng+0.4),ahy-sz*Math.sin(ahAng+0.4));
+                ctx.closePath();ctx.fill();
             }
         }
         for (const tier in Config.SKILL_TREE) for (const key in Config.SKILL_TREE[tier]) {
