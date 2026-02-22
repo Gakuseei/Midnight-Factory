@@ -324,15 +324,27 @@ kbd.shortcut-key {
 <canvas id="minimap-canvas" width="250" height="250"
   style="position:absolute;bottom:50px;right:20px;width:180px;height:180px;border-radius:8px;border:1px solid var(--border);background:var(--surface);z-index:50;display:none;cursor:crosshair;"></canvas>
 
-<div id="stats-panel" class="panel" style="display:none;top:80px;right:20px;width:250px;z-index:60;background:var(--surface-hover);">
-  <div style="font-weight:bold;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:5px;font-size:14px;color:var(--gold);">Production Stats <span style="font-size:10px;color:var(--text-dim);font-weight:400;">rate/min &nbsp;&#9733; lifetime</span></div>
-  <div id="stats-content"></div>
-  <canvas id="earn-sparkline" width="218" height="36" style="display:block;margin-top:10px;width:100%;"></canvas>
-  <div id="stats-lifetime" style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);color:var(--text-dim);font-size:11px;font-family:'Fira Code',monospace;"></div>
+<div id="stats-panel" class="panel" style="display:none;top:80px;right:20px;width:280px;z-index:60;background:var(--surface-hover);max-height:calc(100vh - 120px);overflow-y:auto;">
+  <div style="display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--border);">
+    <button id="stats-tab-prod" class="stats-tab stats-tab-active" style="flex:1;background:none;border:none;padding:6px 4px;font-size:12px;cursor:pointer;color:var(--gold);border-bottom:2px solid var(--gold);font-family:inherit;">Production</button>
+    <button id="stats-tab-bldg" class="stats-tab" style="flex:1;background:none;border:none;padding:6px 4px;font-size:12px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;font-family:inherit;">Buildings</button>
+  </div>
+  <div id="stats-prod-tab">
+    <div id="stats-content"></div>
+    <canvas id="earn-sparkline" width="248" height="36" style="display:block;margin-top:10px;width:100%;"></canvas>
+    <div id="stats-lifetime" style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);color:var(--text-dim);font-size:11px;font-family:'Fira Code',monospace;"></div>
+  </div>
+  <div id="stats-bldg-tab" style="display:none;">
+    <div id="stats-bldg-counts" style="font-size:12px;"></div>
+    <div id="stats-bldg-util" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;"></div>
+  </div>
 </div>
 
 <div id="seed-display">
   Seed: <span id="seed-val"></span>
+  <span id="export-save-btn" title="Download save file" style="cursor:pointer;opacity:0.7;margin-left:6px;">&#x1F4BE;</span>
+  <span id="import-save-btn" title="Import save file" style="cursor:pointer;opacity:0.7;">&#x1F4C2;</span>
+  <input type="file" id="import-file-input" accept=".json" style="display:none;">
   <span id="new-game-btn" title="Start new game with fresh map">↺ NEW</span>
 </div>
 
@@ -368,6 +380,13 @@ kbd.shortcut-key {
   by <a href="https://github.com/Gakuseei" target="_blank" rel="noopener" style="color:rgba(140,160,220,0.7);text-decoration:none;">Gakuseei</a>
 </div>
 <div id="toast-msg"></div>
+<div id="tutorial-banner" style="display:none;position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:200;background:rgba(15,17,30,0.92);border:1px solid rgba(91,106,175,0.4);border-radius:10px;padding:10px 20px;backdrop-filter:blur(12px);max-width:440px;text-align:center;font-size:13px;color:var(--text-active);box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+  <div id="tutorial-step" style="margin-bottom:6px;line-height:1.5;"></div>
+  <div style="display:flex;justify-content:center;gap:12px;align-items:center;">
+    <span id="tutorial-dots" style="font-size:18px;letter-spacing:4px;color:var(--text-dim);"></span>
+    <button id="tutorial-skip" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 10px;font-size:11px;color:var(--text-dim);cursor:pointer;font-family:inherit;">Skip</button>
+  </div>
+</div>
 <div id="end-screen" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,10,16,0.93);backdrop-filter:blur(20px);flex-direction:column;align-items:center;justify-content:center;gap:20px;">
   <div style="font-family:Quicksand,sans-serif;font-size:46px;font-weight:700;color:#e0d0ff;text-shadow:0 0 40px rgba(160,91,210,0.9);letter-spacing:2px;">QUANTUM CORE</div>
   <div style="font-size:17px;color:#a4b5d0;max-width:420px;text-align:center;line-height:1.8;">The factory has reached its apex.<br>Your production line transcends the physical.</div>
@@ -4123,6 +4142,57 @@ class UI {
             const _ltEl=document.getElementById('stats-lifetime');
             if (_ltEl) _ltEl.textContent='All-time: $'+fmtNum(this._lifetimeSold||0)+' earned · '+fmtNum(this._lifetimeItems||0)+' items sold';
         }
+        if (document.getElementById('stats-panel').style.display==='block' && this._statsActiveTab==='bldg') {
+            this._updateBuildingStats();
+        }
+    }
+    _updateBuildingStats() {
+        const buildings=this.main.state.buildings;
+        if (!buildings) return;
+        const counts={};
+        let totalBuildings=0;
+        let idleCount=0, activeCount=0;
+        const idleMap=this.main.renderer._idleSince;
+        const ts=performance.now();
+        for (let y=0;y<Config.MAP_H;y++) for (let x=0;x<Config.MAP_W;x++) {
+            const b=buildings[y]&&buildings[y][x];
+            if (!b) continue;
+            const t=b.type;
+            counts[t]=(counts[t]||0)+1;
+            totalBuildings++;
+            if (_IDLE_TYPES.has(t)) {
+                const bk=y*Config.MAP_W+x;
+                if (idleMap.has(bk)&&(ts-idleMap.get(bk))>6000) idleCount++;
+                else activeCount++;
+            }
+        }
+        const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+        let ch='<div style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Building Counts</div>';
+        if (!sorted.length) ch+='<div style="color:var(--text-dim);">No buildings placed</div>';
+        for (const [type,cnt] of sorted) {
+            const nm=type.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+            const c=Config.COLORS&&Config.COLORS[type]?Config.COLORS[type]:'#888';
+            ch+='<div style="display:flex;justify-content:space-between;margin:3px 0;align-items:center;">'
+                +'<span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+c+';"></span>'+nm+'</span>'
+                +'<span style="color:var(--text-active);font-family:\'Fira Code\',monospace;font-size:11px;">'+cnt+'</span></div>';
+        }
+        ch+='<div style="margin-top:6px;padding-top:4px;border-top:1px solid var(--border);color:var(--text-dim);font-size:11px;">Total: '+totalBuildings+'</div>';
+        document.getElementById('stats-bldg-counts').innerHTML=ch;
+        const prodTotal=activeCount+idleCount;
+        let uh='<div style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Utilization</div>';
+        if (prodTotal>0) {
+            const pct=Math.round(activeCount/prodTotal*100);
+            const barW=pct;
+            uh+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0;">'
+                +'<span style="font-size:11px;color:var(--text-dim);width:50px;">Active</span>'
+                +'<div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">'
+                +'<div style="width:'+barW+'%;height:100%;background:linear-gradient(90deg,#5aaa6a,#44cc66);border-radius:3px;"></div></div>'
+                +'<span style="font-family:\'Fira Code\',monospace;font-size:11px;color:var(--text-active);width:36px;text-align:right;">'+pct+'%</span></div>';
+            uh+='<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+activeCount+' active, '+idleCount+' idle of '+prodTotal+' production buildings</div>';
+        } else {
+            uh+='<div style="color:var(--text-dim);font-size:11px;">No production buildings</div>';
+        }
+        document.getElementById('stats-bldg-util').innerHTML=uh;
     }
     updateBuildMenuAvailability(money) {
         document.querySelectorAll('.build-btn').forEach(btn=>{
@@ -4133,10 +4203,24 @@ class UI {
         });
     }
     setupEvents() {
-        document.getElementById('skill-btn').onclick=()=>this.toggleSkillTree();
+        document.getElementById('skill-btn').onclick=()=>{this.toggleSkillTree();if(this.main)this.main._advanceTutorial('tree_opened');};
         document.getElementById('close-skill-btn').onclick=()=>this.toggleSkillTree();
         document.getElementById('recipe-btn').onclick=()=>this.toggleRecipeBook();
         document.getElementById('close-recipe-btn').onclick=()=>this.toggleRecipeBook();
+
+        // ── Stats panel tab switching ──────────────────────────────────
+        const _switchStatsTab=(tab)=>{
+            const tabs=['prod','bldg'];
+            for (const t of tabs) {
+                document.getElementById('stats-tab-'+t).style.color=t===tab?'var(--gold)':'var(--text-dim)';
+                document.getElementById('stats-tab-'+t).style.borderBottomColor=t===tab?'var(--gold)':'transparent';
+                document.getElementById('stats-'+t+'-tab').style.display=t===tab?'':'none';
+            }
+            this._statsActiveTab=tab;
+        };
+        document.getElementById('stats-tab-prod').onclick=()=>_switchStatsTab('prod');
+        document.getElementById('stats-tab-bldg').onclick=()=>_switchStatsTab('bldg');
+        this._statsActiveTab='prod';
 
         // ── Music generator setup ────────────────────────────────────────
         this._lofi = new LoFiGen();
@@ -4177,6 +4261,40 @@ class UI {
                 location.reload();
             }, 4500);
             this.main.showToast('New game in 4s \u2014 click \u21ba again to cancel','rgba(210,91,91,0.9)',4200);
+        };
+        // Save export
+        document.getElementById('export-save-btn').onclick=()=>{
+            const saveJson=this.main._lastSaveJson;
+            if (!saveJson) { this.main.showToast('No save data yet'); return; }
+            const blob=new Blob([saveJson],{type:'application/json'});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');
+            a.href=url; a.download='midnight-factory-'+this.main.seed+'.json';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this.main.showToast('Save exported');
+        };
+        // Save import
+        document.getElementById('import-save-btn').onclick=()=>{
+            document.getElementById('import-file-input').click();
+        };
+        document.getElementById('import-file-input').onchange=(e)=>{
+            const file=e.target.files[0];
+            if (!file) return;
+            const reader=new FileReader();
+            reader.onload=(ev)=>{
+                try {
+                    const data=JSON.parse(ev.target.result);
+                    if (!data.sparseBuildings||data.money===undefined) throw new Error('Invalid save');
+                    try { localStorage.setItem('mf_save_'+this.main.seed, ev.target.result); } catch(err) { this.main.showToast('Import failed \u2014 storage full','rgba(210,91,91,0.9)'); return; }
+                    this.main.showToast('Save imported \u2014 reloading...','rgba(91,170,106,0.9)',2000);
+                    setTimeout(()=>location.reload(),1500);
+                } catch(err) {
+                    this.main.showToast('Invalid save file','rgba(210,91,91,0.9)');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value='';
         };
         const sbs={'btn-speed-0':0,'btn-speed-05':0.5,'btn-speed-1':1,'btn-speed-2':2};
         for (const [id,mult] of Object.entries(sbs)) {
@@ -4589,6 +4707,20 @@ class Game {
         requestAnimationFrame(this._loop);
         this._totalPlaced=0;
         this._hintShown={};
+        // Tutorial system — only on fresh games
+        this._tutorialStep=0;
+        this._tutorialActive=!saved&&!localStorage.getItem('mf_hint_tutorial_done');
+        this._tutorialSteps=[
+            {text:'\u26cf Place a <b>Mine</b> on a coloured ore tile to start producing',trigger:'mine_placed'},
+            {text:'\u2192 Drag a <b>Belt</b> from the Mine to route items along a path',trigger:'belt_placed'},
+            {text:'\u2713 Place a <b>Seller</b> at the end of the belt to earn Credits',trigger:'seller_placed'},
+            {text:'\uD83D\uDCB0 Watch the money flow in! Place more mines to grow your factory',trigger:'money_300'},
+            {text:'\uD83C\uDF33 Press <b>T</b> to open the Skill Tree and unlock new buildings',trigger:'tree_opened'}
+        ];
+        if (this._tutorialActive) {
+            setTimeout(()=>this._showTutorialStep(),1200);
+            document.getElementById('tutorial-skip').onclick=()=>this._dismissTutorial();
+        }
         this._blueprint=null;
         this._laneDir = -1;
         this._laneStart = null;
@@ -4608,6 +4740,56 @@ class Game {
             if (this._earnHistory.length > 60) this._earnHistory.shift();
             if (document.getElementById('stats-panel').style.display === 'block') this._drawSparkline();
         }, 5000);
+        // Production alerts — check every 15s for idle/starving buildings
+        this._alertedBuildings=new Set();
+        this._alertsEnabled=true;
+        setInterval(()=>{
+            if (!this._alertsEnabled||!this.state.buildings||!this.renderer._idleSince) return;
+            const ts=performance.now();
+            const idleMap=this.renderer._idleSince;
+            let alerted=0;
+            for (const [bk, since] of idleMap) {
+                if (alerted>=2) break; // max 2 alerts per check to avoid spam
+                const elapsed=ts-since;
+                const y=Math.floor(bk/Config.MAP_W), x=bk%Config.MAP_W;
+                const b=this.state.buildings[y]&&this.state.buildings[y][x];
+                if (!b) continue;
+                const alertKey=x+','+y;
+                if (this._alertedBuildings.has(alertKey)) continue;
+                const isSeller=b.type==='seller';
+                const threshold=isSeller?60000:30000;
+                if (elapsed>threshold) {
+                    const nm=b.type.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+                    const msg=isSeller?nm+' at ['+x+','+y+'] has no items to sell':nm+' at ['+x+','+y+'] is starving';
+                    this.showToast(msg,'rgba(210,160,60,0.9)',4000);
+                    this._alertedBuildings.add(alertKey);
+                    alerted++;
+                }
+            }
+            // Check ore veins <10%
+            if (this.state.buildings) {
+                for (let _ay=0;_ay<Config.MAP_H&&alerted<3;_ay++) for (let _ax=0;_ax<Config.MAP_W&&alerted<3;_ax++) {
+                    const _ab=this.state.buildings[_ay]&&this.state.buildings[_ay][_ax];
+                    if (!_ab||(_ab.type!=='mine'&&_ab.type!=='vein_miner')) continue;
+                    if (!_ab.initialOre||_ab.initialOre<=0) continue;
+                    const pct=_ab.remainingOre/_ab.initialOre;
+                    const ak='ore_'+_ax+','+_ay;
+                    if (pct>0&&pct<0.1&&!this._alertedBuildings.has(ak)) {
+                        const nm=_ab.type==='vein_miner'?'Vein Miner':'Mine';
+                        this.showToast(nm+' at ['+_ax+','+_ay+'] is below 10% ore','rgba(210,120,60,0.9)',4000);
+                        this._alertedBuildings.add(ak);
+                        alerted++;
+                    }
+                }
+            }
+            // Clear alerts for buildings that are no longer idle (re-enable future alerts)
+            for (const ak of this._alertedBuildings) {
+                if (ak.startsWith('ore_')) continue;
+                const [ax,ay]=ak.split(',').map(Number);
+                const bk2=ay*Config.MAP_W+ax;
+                if (!idleMap.has(bk2)) this._alertedBuildings.delete(ak);
+            }
+        }, 15000);
     }
     setupWorker() {
         this.worker.onmessage=(e)=>{
@@ -4650,6 +4832,7 @@ class Game {
                     this.ui.qcEl.textContent='\u2B21 '+this.state.quantumCoreCount;
                 }
                 if (msg.money>=300 && !this._hintShown['lab']) setTimeout(()=>this._checkHint('lab'),500);
+                if (msg.money>=300) this._advanceTutorial('money_300');
                 if (msg.oreProgress) {
                     for (const [key, op] of Object.entries(msg.oreProgress)) {
                         const [ky,kx]=key.split(',').map(Number);
@@ -4704,6 +4887,9 @@ class Game {
                 if (msg.building.type==='mine' && this._totalPlaced===1) setTimeout(()=>this._checkHint('belt'),800);
                 if (msg.building.type==='belt' && this._totalPlaced===2) setTimeout(()=>this._checkHint('seller'),800);
                 if (msg.building.type==='seller') setTimeout(()=>this._checkHint('stuck'),20000);
+                if (msg.building.type==='mine') this._advanceTutorial('mine_placed');
+                if (msg.building.type&&msg.building.type.startsWith('belt')) this._advanceTutorial('belt_placed');
+                if (msg.building.type==='seller') this._advanceTutorial('seller_placed');
                 // Smart auto-connect: particle burst when belt connects to a producer output
                 if (msg.building.type && msg.building.type.startsWith('belt')) {
                     const _bdir = msg.building.dir||0;
@@ -4843,6 +5029,45 @@ class Game {
         if (this.ui.minimapVisible) this.ui.drawMinimap(this.state,this.renderer.camX,this.renderer.camY,this.renderer.zoom);
         if (this._copyMode) this._drawBlueprintOverlay();
         this._drawVeinPreview();
+        this._drawBeltGhost();
+    }
+    _drawBeltGhost() {
+        if (this._copyMode) return;
+        if (!this.ui.selectedTool||!this.ui.selectedTool.startsWith('belt')||!this.uiState.hoverTile) {
+            if (this._beltGhostDrawn) {
+                const _bgc=document.getElementById('blueprint-canvas');
+                if (_bgc) _bgc.getContext('2d').clearRect(0,0,_bgc.width,_bgc.height);
+                this._beltGhostDrawn=false;
+            }
+            return;
+        }
+        const bc=document.getElementById('blueprint-canvas');
+        if (!bc) return;
+        const hx=this.uiState.hoverTile.x, hy=this.uiState.hoverTile.y;
+        if (!this.state.buildings||hx<0||hy<0||hx>=Config.MAP_W||hy>=Config.MAP_H) return;
+        if (this.state.buildings[hy]&&this.state.buildings[hy][hx]) return; // tile occupied
+        const bctx=bc.getContext('2d');
+        if (bc.width!==window.innerWidth||bc.height!==window.innerHeight){bc.width=window.innerWidth;bc.height=window.innerHeight;}
+        bctx.clearRect(0,0,bc.width,bc.height);
+        const T=Config.TILE_SIZE*this.renderer.zoom;
+        const offX=-this.renderer.camX*this.renderer.zoom;
+        const offY=-this.renderer.camY*this.renderer.zoom;
+        const dir=this.ui.rotation;
+        const arrows=['\u2191','\u2192','\u2193','\u2190'];
+        const sx=hx*T+offX, sy=hy*T+offY;
+        bctx.globalAlpha=0.35;
+        bctx.fillStyle='rgba(91,106,175,0.3)';
+        bctx.fillRect(sx+1,sy+1,T-2,T-2);
+        bctx.strokeStyle='rgba(140,160,220,0.6)';
+        bctx.lineWidth=1.5;
+        bctx.strokeRect(sx+1,sy+1,T-2,T-2);
+        // Draw direction arrow
+        bctx.fillStyle='rgba(200,210,240,0.7)';
+        bctx.font=Math.round(T*0.5)+'px sans-serif';
+        bctx.textAlign='center';bctx.textBaseline='middle';
+        bctx.fillText(arrows[dir],sx+T/2,sy+T/2);
+        bctx.globalAlpha=1;
+        this._beltGhostDrawn=true;
     }
     _drawVeinPreview() {
         if (this._copyMode) return; // Don't interfere with blueprint overlay
@@ -5118,7 +5343,7 @@ class Game {
                     this.showToast('Copy mode \u2014 click two corners to select area','rgba(91,106,175,0.9)',4000);
                 }
             }
-            else if (k==='t') { this.ui.toggleSkillTree(); this._checkHint('tree'); }
+            else if (k==='t') { this.ui.toggleSkillTree(); this._checkHint('tree'); this._advanceTutorial('tree_opened'); }
             else if (k==='b') this.ui.toggleRecipeBook();
             else if (k==='m'){this.ui.minimapVisible=!this.ui.minimapVisible;this.ui.minimapCanvas.style.display=this.ui.minimapVisible?'block':'none';}
             else if (k==='s'){const sp=document.getElementById('stats-panel');sp.style.display=sp.style.display==='none'?'block':'none';if(sp.style.display==='block')this._drawSparkline();}
@@ -5366,7 +5591,39 @@ class Game {
         if (!hints[id]) return;
         this._hintShown[id]=true;
         try { localStorage.setItem('mf_hint_'+id,'1'); } catch(e) {}
-        this.showToast(hints[id],'rgba(91,106,175,0.9)',5000);
+        if (!this._tutorialActive) this.showToast(hints[id],'rgba(91,106,175,0.9)',5000);
+    }
+    _showTutorialStep() {
+        if (!this._tutorialActive) return;
+        if (this._tutorialStep>=this._tutorialSteps.length) { this._dismissTutorial(); return; }
+        const banner=document.getElementById('tutorial-banner');
+        const stepEl=document.getElementById('tutorial-step');
+        const dotsEl=document.getElementById('tutorial-dots');
+        if (!banner||!stepEl) return;
+        const step=this._tutorialSteps[this._tutorialStep];
+        stepEl.innerHTML=step.text;
+        let dots='';
+        for (let i=0;i<this._tutorialSteps.length;i++) dots+=i<this._tutorialStep?'\u25CF':i===this._tutorialStep?'\u25C9':'\u25CB';
+        dotsEl.textContent=dots;
+        banner.style.display='block';
+    }
+    _advanceTutorial(trigger) {
+        if (!this._tutorialActive) return;
+        if (this._tutorialStep>=this._tutorialSteps.length) return;
+        if (this._tutorialSteps[this._tutorialStep].trigger===trigger) {
+            this._tutorialStep++;
+            if (this._tutorialStep>=this._tutorialSteps.length) {
+                this._dismissTutorial();
+                this.showToast('Tutorial complete \u2014 happy building!','rgba(91,170,106,0.9)',3000);
+            } else {
+                this._showTutorialStep();
+            }
+        }
+    }
+    _dismissTutorial() {
+        this._tutorialActive=false;
+        document.getElementById('tutorial-banner').style.display='none';
+        try { localStorage.setItem('mf_hint_tutorial_done','1'); } catch(e) {}
     }
     spawnRpFloat(tx, ty, val) {
         const T = Config.TILE_SIZE;
