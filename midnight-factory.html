@@ -4716,13 +4716,13 @@ class UI {
                 ctx.save(); ctx.strokeStyle=canAfford?"rgba(100,200,140,"+pulse+")":"rgba(140,180,255,"+pulse+")"; ctx.lineWidth=2.5;
                 ctx.beginPath(); ctx.roundRect(node.x-1,node.y-1,182,62,13); ctx.stroke(); ctx.restore();
             }
-            if (node.unlocks&&node.unlocks.length>0) {
+            if (ca&&node.unlocks&&node.unlocks.length>0) {
                 ctx.save(); ctx.fillStyle='#5aaa6a'; ctx.beginPath(); ctx.arc(node.x+166,node.y+12,4,0,Math.PI*2); ctx.fill(); ctx.restore();
             }
             ctx.fillStyle=un?"#fff":ca?"#e2e8f0":"#6b7c9e"; ctx.font="bold 14px Quicksand";
             ctx.fillText(node.name,node.x+15,node.y+25);
             if (!un){ctx.font="11px Fira Code";ctx.fillStyle=Config.COLORS.research;ctx.fillText(node.costRP+' RP',node.x+15,node.y+45);if(node.costCr>0){ctx.fillStyle=Config.COLORS.gold;ctx.fillText('$'+node.costCr,node.x+75,node.y+45);}else{ctx.fillStyle='rgba(91,106,175,0.5)';ctx.fillText('RP only',node.x+75,node.y+45);}}
-            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;let _tagTxt=node.tag?"\u2713 "+node.tag:"\u2713 Unlocked";const _tw=ctx.measureText(_tagTxt).width;if(_tw>155){while(ctx.measureText(_tagTxt+"\u2026").width>155&&_tagTxt.length>2)_tagTxt=_tagTxt.slice(0,-1);_tagTxt+="\u2026";}ctx.fillText(_tagTxt,node.x+15,node.y+45);}
+            else{ctx.font="bold 12px Quicksand";ctx.fillStyle=Config.COLORS.sell;if(!node._tagCache){let t=node.tag?"\u2713 "+node.tag:"\u2713 Unlocked";if(ctx.measureText(t).width>155){while(ctx.measureText(t+"\u2026").width>155&&t.length>2)t=t.slice(0,-1);t+="\u2026";}node._tagCache=t;}ctx.fillText(node._tagCache,node.x+15,node.y+45);}
         }
         ctx.restore();
     }
