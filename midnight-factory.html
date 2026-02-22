@@ -4774,8 +4774,8 @@ class Game {
             if (this._inErrorHandler) return;
             this._inErrorHandler=true;
             try {
-                this.showToast('Error: '+(msg||'unknown'),'rgba(210,91,91,0.9)',6000);
                 if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+                this.showToast('Error: '+(msg||'unknown'),'rgba(210,91,91,0.9)',6000);
             } finally { this._inErrorHandler=false; }
         };
         window.addEventListener('unhandledrejection',(ev)=>{
@@ -5041,7 +5041,7 @@ class Game {
                 if (_db && _db.type==='mine') { _db.isDepleted=true; this.showToast('\u26cf Mine at ['+msg.x+'],['+msg.y+'] exhausted', null, 3500); }
                 else if (_db && _db.type==='vein_miner') {
                     if (_db.remainingOre!==undefined&&_db.remainingOre<=0&&_db.initialOre>0) { _db.isDepleted=true; this.showToast('\u26cf Vein Miner at ['+msg.x+'],['+msg.y+'] exhausted', null, 3500); }
-                } else if (_db) { _db.isDepleted=true; this.ui.invalidateMinimap(); }
+                } else if (_db) { _db.isDepleted=true; }
             } else if (msg.type==='place_failed') {
                 this.uiState.placeFailTile={x:msg.x,y:msg.y,at:performance.now()};
                 if(this._sfx&&!this._isDragging) this._sfx.sfx('error');
