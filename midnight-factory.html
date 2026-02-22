@@ -602,7 +602,7 @@ function emitSave() {
         var _oreAmt = state.oreAmounts[sy][sx];
         if (_oreAmt > 0) oreData[key] = _oreAmt;
     }
-    var _saveObj = { version:1, money:state.money, rp:state.rp,
+    var _saveObj = { version:SAVE_VERSION, money:state.money, rp:state.rp,
         sparseBuildings:sparseBuildings, unlockedTechs:Array.from(state.unlockedTechs), oreData:oreData,
         firedMilestones:Array.from(firedMilestones), quantumCoreCount:_quantumCoreCount, singularityCount:_singularityCount,
         lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems, statTotals:statTotals,
@@ -610,11 +610,24 @@ function emitSave() {
     postMessage({ type:'save_game', data:_saveObj, json:JSON.stringify(_saveObj) });
 }
 
+var SAVE_VERSION = 2;
+function migrateSave(data) {
+    if (!data) return data;
+    var v = data.version || 1;
+    if (v < 2) {
+        if (!data.recipeMastery) data.recipeMastery = {};
+        if (!data.statTotals) data.statTotals = {};
+        data.version = 2;
+    }
+    return data;
+}
+
 self.onmessage = function(e) {
     const msg = e.data;
     switch (msg.type) {
         case 'init':
             if (msg.save) {
+                migrateSave(msg.save);
                 state.isLoadedFromSave = true;
                 state.money = Math.max(0, Number(msg.save.money) || 0);
                 state.rp = Math.max(0, Number(msg.save.rp) || 0);
@@ -736,7 +749,7 @@ function tryPlace(x, y, type, dir) {
     if (x<0||x>=Config.MAP_W||y<0||y>=Config.MAP_H) { postMessage({type:'place_failed',x,y,reason:'bounds'}); return; }
     if (state.buildings[y][x]) { postMessage({type:'place_failed',x,y,reason:'occupied'}); return; }
     const cost = Config.BUILD_COSTS[type];
-    if (state.money < cost) { postMessage({type:'place_failed',x,y,reason:'funds'}); return; }
+    if (state.money < cost) { postMessage({type:'place_failed',x,y,reason:'funds',cost:cost}); return; }
     if (type==="mine" && !state.map[y][x]) { postMessage({type:'place_failed',x,y,reason:'no_ore'}); return; }
     if (type==="mine" && DEEP_ORES.includes(state.map[y][x]) && !state.unlockedTechs.has('deep_mining')) {
         postMessage({type:'place_failed',x,y,reason:'locked_ore'}); return;
@@ -4684,7 +4697,15 @@ class Game {
 
         // Build worker from embedded source + injected Config
         const workerSrc='const Config='+JSON.stringify(Config)+';\n'+document.getElementById('worker-src').textContent;
-        this.worker=new Worker(URL.createObjectURL(new Blob([workerSrc],{type:'application/javascript'})));
+        const _blobUrl=URL.createObjectURL(new Blob([workerSrc],{type:'application/javascript'}));
+        this.worker=new Worker(_blobUrl);
+        URL.revokeObjectURL(_blobUrl);
+
+        this.worker.onerror=(err)=>{
+            const _errMsg='Worker crashed: '+(err.message||'unknown error');
+            if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+            this.showToast(_errMsg,'rgba(210,91,91,0.9)',8000);
+        };
 
         this.seed=localStorage.getItem('mf_seed')||Math.random().toString(36).substring(2,8);
         localStorage.setItem('mf_seed',this.seed);
@@ -4702,6 +4723,13 @@ class Game {
         });
         document.addEventListener('visibilitychange', ()=>{
             if (document.visibilityState==='hidden') this.worker.postMessage({type:'force_save'});
+        });
+        window.onerror=(msg)=>{
+            this.showToast('Error: '+(msg||'unknown'),'rgba(210,91,91,0.9)',6000);
+            if (this._lastSaveJson) try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
+        };
+        window.addEventListener('unhandledrejection',(ev)=>{
+            this.showToast('Error: '+(ev.reason||'unhandled rejection'),'rgba(210,91,91,0.9)',6000);
         });
         this._loop=this.loop.bind(this);
         requestAnimationFrame(this._loop);
@@ -4965,6 +4993,9 @@ class Game {
                 this.uiState.placeFailTile={x:msg.x,y:msg.y,at:performance.now()};
                 if(this._sfx) this._sfx.sfx('error');
                 if (msg.reason==='locked_ore') this.showToast('Requires Deep Mining or Exotic Mining skill');
+                else if (msg.reason==='funds') this.showToast('Not enough credits ($'+msg.cost+' needed)');
+                else if (msg.reason==='no_ore') this.showToast('Must be placed on an ore tile');
+                else if (msg.reason==='occupied') this.showToast('Tile already occupied');
             } else if (msg.type==='undo_done') {
                 this.showToast('Undone');
             } else if (msg.type==='undo_failed') {
