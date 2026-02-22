@@ -420,8 +420,7 @@ let state = {
     unlockedTechs: new Set(), isLoadedFromSave: false,
     minedCells: new Set(), stats: { totalEarned: 0, totalRP: 0 },
     lifetimeSold: 0, lifetimeItems: 0,
-    recipeMastery: {},
-    demandWindow: {}
+    recipeMastery: {}
 };
 
 // sellHistory ring buffer — fixed capacity, O(1) push, no splice/GC
@@ -1001,12 +1000,7 @@ function tick(now) {
                     }
                 }
             } else if (hb.type==="seller") {
-                var _demandStr='';
-                if (hb.sellerFilter&&state.demandWindow[hb.sellerFilter]!==undefined) {
-                    var _dm=state.demandWindow[hb.sellerFilter];
-                    _demandStr=' \u2014 Demand: '+(_dm>=0.9?'High':_dm>=0.7?'Normal':_dm>=0.5?'Low':'Saturated')+' ('+Math.round(_dm*100)+'%)';
-                }
-                hoverData = "Sold: $"+hb.totalSold+_demandStr;
+                hoverData = "Sold: $"+hb.totalSold;
             } else if (hb.type==="ore_synthesizer") {
                 var _osOre = hb.synthOre ? hb.synthOre.replace(/_/g,' ') : "None selected";
                 var _osEC = hb.inventory.energy_cell || 0;
@@ -1049,7 +1043,7 @@ function tick(now) {
         stats[_ht] = (stats[_ht]||0) + _shVals[_si2];
         itemCounts[_ht] = (itemCounts[_ht]||0) + 1;
     }
-    var _demandMap = itemCounts;
+
 
     for (const m of Config.MILESTONES) {
         if (firedMilestones.has(m.id)) continue;
@@ -1190,10 +1184,6 @@ function updateSimulation(dt) {
                         if (state.unlockedTechs.has('gold_refining')&&it.type==='gold_ingot') val*=1.25;
                         if (state.unlockedTechs.has('nebula_resonance')&&it.type==='plasma_coil') val*=1.5;
                         if (state.unlockedTechs.has('sing_prestige_1')) val*=1.15;
-                        var _demandCnt=_demandMap[it.type]||0;
-                        var _demandMult=Math.max(0.3, 1.0/(1.0+_demandCnt*0.005));
-                        val*=_demandMult;
-                        state.demandWindow[it.type]=_demandMult;
                         val=Math.round(val);
                         state.money+=val; b.totalSold+=val;
                         state.lifetimeSold+=val; state.lifetimeItems++;
@@ -1612,7 +1602,7 @@ const Config = {
         nebula_dust:{color:"#c87adf",value:40,rp:18},
         titanium_bar:{color:"#88c8c8",value:50,rp:18},
         nebula_crystal:{color:"#d8a0f0",value:160,rp:50},
-        titan_alloy:{color:"#8090c0",value:120,rp:40},
+        titan_alloy:{color:"#8090c0",value:150,rp:40},
         plasma_coil:{color:"#e0a0ff",value:350,rp:120},
         quantum_lattice:{color:"#a8c0f0",value:800,rp:250},
         singularity_shard:{color:"#f0d0e8",value:5000,rp:1500}
@@ -1638,7 +1628,7 @@ const Config = {
             {in:{alloy:1,nano_chip:1},out:"energy_cell",time:8000},
             {in:{processor:2,crystal:5},out:"quantum_core",time:10000},
             {in:{brick:2,refined_coal:1},out:"composite",time:4000},
-            {in:{refined_coal:2,brick:1},out:"alloy",time:2000},
+            {in:{refined_coal:1,brick:2},out:"alloy",time:2000},
             {in:{titanium_bar:2,steel:1},out:"titan_alloy",time:5000},
             {in:{nebula_crystal:1,energy_cell:1},out:"plasma_coil",time:7000},
             {in:{quantum_core:1,titan_alloy:2},out:"quantum_lattice",time:8000}
