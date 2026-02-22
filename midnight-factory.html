@@ -580,9 +580,10 @@ function emitSave() {
     const oreData = {};
     for (const key of state.minedCells) {
         const [sy, sx] = key.split(',').map(Number);
-        oreData[key] = state.oreAmounts[sy][sx];
+        var _oreAmt = state.oreAmounts[sy][sx];
+        if (_oreAmt > 0) oreData[key] = _oreAmt;
     }
-    var _saveObj = { money:state.money, rp:state.rp,
+    var _saveObj = { version:1, money:state.money, rp:state.rp,
         sparseBuildings:sparseBuildings, unlockedTechs:Array.from(state.unlockedTechs), oreData:oreData,
         firedMilestones:Array.from(firedMilestones), quantumCoreCount:_quantumCoreCount, singularityCount:_singularityCount,
         lifetimeSold:state.lifetimeSold, lifetimeItems:state.lifetimeItems, statTotals:statTotals,
@@ -596,13 +597,16 @@ self.onmessage = function(e) {
         case 'init':
             if (msg.save) {
                 state.isLoadedFromSave = true;
-                state.money = msg.save.money; state.rp = msg.save.rp;
-                state.unlockedTechs = new Set(msg.save.unlockedTechs || []);
+                state.money = Math.max(0, Number(msg.save.money) || 0);
+                state.rp = Math.max(0, Number(msg.save.rp) || 0);
+                var _validSkillIds = {};
+                for (var _vt in Config.SKILL_TREE) for (var _vk in Config.SKILL_TREE[_vt]) _validSkillIds[_vk] = true;
+                state.unlockedTechs = new Set((msg.save.unlockedTechs || []).filter(function(id){ return _validSkillIds[id]; }));
                 if (msg.save.firedMilestones) for (const m of msg.save.firedMilestones) firedMilestones.add(m);
-                if (msg.save.quantumCoreCount !== undefined) _quantumCoreCount = msg.save.quantumCoreCount;
-                if (msg.save.singularityCount !== undefined) _singularityCount = msg.save.singularityCount;
-                if (msg.save.lifetimeSold !== undefined) state.lifetimeSold = msg.save.lifetimeSold;
-                if (msg.save.lifetimeItems !== undefined) state.lifetimeItems = msg.save.lifetimeItems;
+                if (msg.save.quantumCoreCount !== undefined) _quantumCoreCount = Math.max(0, Number(msg.save.quantumCoreCount) || 0);
+                if (msg.save.singularityCount !== undefined) _singularityCount = Math.max(0, Number(msg.save.singularityCount) || 0);
+                if (msg.save.lifetimeSold !== undefined) state.lifetimeSold = Math.max(0, Number(msg.save.lifetimeSold) || 0);
+                if (msg.save.lifetimeItems !== undefined) state.lifetimeItems = Math.max(0, Number(msg.save.lifetimeItems) || 0);
                 if (msg.save.statTotals) { for (var _stk in msg.save.statTotals) statTotals[_stk] = msg.save.statTotals[_stk]; }
                 if (msg.save.recipeMastery) state.recipeMastery = msg.save.recipeMastery;
                 const MH2 = Config.MAP_H, MW2 = Config.MAP_W;
@@ -610,7 +614,7 @@ self.onmessage = function(e) {
                 if (msg.save.sparseBuildings)
                     for (const [key, b] of Object.entries(msg.save.sparseBuildings)) {
                         const [ky, kx] = key.split(',').map(Number);
-                        if (ky>=0 && ky<MH2 && kx>=0 && kx<MW2) {
+                        if (ky>=0 && ky<MH2 && kx>=0 && kx<MW2 && b.type && (Config.BUILD_COSTS[b.type] !== undefined || b.type.startsWith('belt'))) {
                             if (b.rrIndex===undefined) b.rrIndex=b.splitToggle?1:0;
                             state.buildings[ky][kx] = b;
                         }
@@ -836,11 +840,11 @@ function tryDelete(x, y) {
 }
 
 function tryUndo() {
-    if (!undoStack.length) return;
+    if (!undoStack.length) { postMessage({ type:'undo_failed' }); return; }
     const op = undoStack.pop();
     if (op.action==='place') {
         const b = state.buildings[op.y][op.x];
-        if (!b) return;
+        if (!b) { postMessage({ type:'undo_failed' }); return; }
         state.money += op.cost;
         state.buildings[op.y][op.x] = null;
         for (let _ui = state.activeBuildings.length - 1; _ui >= 0; _ui--) {
@@ -862,7 +866,7 @@ function tryUndo() {
         postMessage({ type:'undo_done' });
         scheduleEmitSave();
     } else if (op.action==='delete') {
-        if (state.buildings[op.y][op.x]) return;
+        if (state.buildings[op.y][op.x]) { postMessage({ type:'undo_failed' }); return; }
         state.money -= op.refund;
         if (state.money < 0) state.money = 0;
         const b = Object.assign({}, op.building);
@@ -1594,7 +1598,7 @@ const Config = {
         steel:{color:"#506070",value:30,rp:8}, copper_wire:{color:"#c26b48",value:22,rp:6},
         alloy:{color:"#889098",value:35,rp:12},
         circuit:{color:"#48c26b",value:80,rp:28}, nano_chip:{color:"#40c8e8",value:200,rp:60},
-        processor:{color:"#9a48c2",value:280,rp:100}, energy_cell:{color:"#f0a820",value:650,rp:180},
+        processor:{color:"#9a48c2",value:360,rp:100}, energy_cell:{color:"#f0a820",value:650,rp:180},
         quantum_core:{color:"#d8b8f8",value:1500,rp:500},
         refined_coal:{color:"#8a8aaa",value:12,rp:4},
         composite:{color:"#707088",value:55,rp:15},
@@ -1603,7 +1607,7 @@ const Config = {
         titanium_bar:{color:"#88c8c8",value:50,rp:18},
         nebula_crystal:{color:"#d8a0f0",value:160,rp:50},
         titan_alloy:{color:"#8090c0",value:150,rp:40},
-        plasma_coil:{color:"#e0a0ff",value:900,rp:120},
+        plasma_coil:{color:"#e0a0ff",value:1200,rp:120},
         quantum_lattice:{color:"#a8c0f0",value:800,rp:250},
         singularity_shard:{color:"#f0d0e8",value:5000,rp:1500}
     },
@@ -1824,6 +1828,15 @@ function itemDotStyle(key, sz) {
     }
     // Final fallback
     return 'display:inline-block;width:'+sz+'px;height:'+sz+'px;border-radius:50%;flex-shrink:0;background:'+c+';box-shadow:0 0 4px '+c+'66';
+}
+
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,radii) {
+        var r = typeof radii === 'number' ? radii : (Array.isArray(radii) ? (radii[0] || 0) : 0);
+        if (r > w/2) r = w/2; if (r > h/2) r = h/2;
+        this.moveTo(x+r,y); this.arcTo(x+w,y,x+w,y+h,r); this.arcTo(x+w,y+h,x,y+h,r);
+        this.arcTo(x,y+h,x,y,r); this.arcTo(x,y,x+w,y,r); this.closePath();
+    };
 }
 
 class Renderer {
@@ -2052,6 +2065,7 @@ class Renderer {
     }
     spawnParticle(x, y, opts) {
         if (this._reducedMotion || this._vfxMuted) return;
+        if (this._particles.length >= 400) return;
         this._particles.push({
             x, y,
             vx: opts.vx || (Math.random()-0.5)*0.8,
@@ -4566,7 +4580,7 @@ class Game {
         // Sync save on page hide / close (covers F5, tab close, navigate away)
         window.addEventListener('beforeunload', ()=>{
             if (this._lastSaveJson)
-                localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson);
+                try { localStorage.setItem('mf_save_'+this.seed, this._lastSaveJson); } catch(e) {}
         });
         document.addEventListener('visibilitychange', ()=>{
             if (document.visibilityState==='hidden') this.worker.postMessage({type:'force_save'});
@@ -4747,7 +4761,8 @@ class Game {
             } else if (msg.type==='save_game') {
                 this._lastSaveJson = msg.json;
                 this._lastSaveData = msg.data;
-                localStorage.setItem('mf_save_'+this.seed, msg.json);
+                try { localStorage.setItem('mf_save_'+this.seed, msg.json); }
+                catch(e) { this.showToast('Save failed \u2014 storage full!','rgba(210,91,91,0.9)',5000); }
             } else if (msg.type==='ore_depleted') {
                 this.state.map[msg.y][msg.x]=null; this.ui.minimapBgData=null;
                 if(this._sfx) this._sfx.sfx('mine_depleted');
@@ -4764,6 +4779,8 @@ class Game {
                 if (msg.reason==='locked_ore') this.showToast('Requires Deep Mining or Exotic Mining skill');
             } else if (msg.type==='undo_done') {
                 this.showToast('Undone');
+            } else if (msg.type==='undo_failed') {
+                this.showToast('Nothing to undo');
             } else if (msg.type==='milestone') {
                 if(this._sfx) this._sfx.sfx('milestone');
                 if(this._sfx && (msg.sfx==='quantum_core' || msg.text.includes('Quantum') || msg.text.includes('quantum'))) this._sfx.sfx('quantum_core');
@@ -5348,7 +5365,7 @@ class Game {
         };
         if (!hints[id]) return;
         this._hintShown[id]=true;
-        localStorage.setItem('mf_hint_'+id,'1');
+        try { localStorage.setItem('mf_hint_'+id,'1'); } catch(e) {}
         this.showToast(hints[id],'rgba(91,106,175,0.9)',5000);
     }
     spawnRpFloat(tx, ty, val) {
