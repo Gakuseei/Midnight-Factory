@@ -342,8 +342,8 @@ kbd.shortcut-key {
 
 <div id="seed-display">
   Seed: <span id="seed-val"></span>
-  <span id="export-save-btn" title="Download save file" style="cursor:pointer;opacity:0.7;margin-left:6px;">&#x1F4BE;</span>
-  <span id="import-save-btn" title="Import save file" style="cursor:pointer;opacity:0.7;">&#x1F4C2;</span>
+  <span id="export-save-btn" title="Download save file" style="cursor:pointer;opacity:0.7;margin-left:6px;">&#x2B07;</span>
+  <span id="import-save-btn" title="Import save file" style="cursor:pointer;opacity:0.7;">&#x2B06;</span>
   <input type="file" id="import-file-input" accept=".json" style="display:none;">
   <span id="new-game-btn" title="Start new game with fresh map">↺ NEW</span>
 </div>
@@ -4714,8 +4714,8 @@ class Game {
             {text:'\u26cf Place a <b>Mine</b> on a coloured ore tile to start producing',trigger:'mine_placed'},
             {text:'\u2192 Drag a <b>Belt</b> from the Mine to route items along a path',trigger:'belt_placed'},
             {text:'\u2713 Place a <b>Seller</b> at the end of the belt to earn Credits',trigger:'seller_placed'},
-            {text:'\uD83D\uDCB0 Watch the money flow in! Place more mines to grow your factory',trigger:'money_300'},
-            {text:'\uD83C\uDF33 Press <b>T</b> to open the Skill Tree and unlock new buildings',trigger:'tree_opened'}
+            {text:'\u2605 Watch the money flow in! Place more mines to grow your factory',trigger:'money_300'},
+            {text:'\u2261 Press <b>T</b> to open the Skill Tree and unlock new buildings',trigger:'tree_opened'}
         ];
         if (this._tutorialActive) {
             setTimeout(()=>this._showTutorialStep(),1200);
@@ -4783,12 +4783,14 @@ class Game {
                 }
             }
             // Clear alerts for buildings that are no longer idle (re-enable future alerts)
+            const _toRemove=[];
             for (const ak of this._alertedBuildings) {
                 if (ak.startsWith('ore_')) continue;
                 const [ax,ay]=ak.split(',').map(Number);
                 const bk2=ay*Config.MAP_W+ax;
-                if (!idleMap.has(bk2)) this._alertedBuildings.delete(ak);
+                if (!idleMap.has(bk2)) _toRemove.push(ak);
             }
+            for (let _ri=0;_ri<_toRemove.length;_ri++) this._alertedBuildings.delete(_toRemove[_ri]);
         }, 15000);
     }
     setupWorker() {
@@ -5032,7 +5034,7 @@ class Game {
         this._drawBeltGhost();
     }
     _drawBeltGhost() {
-        if (this._copyMode) return;
+        if (this._copyMode||this._isDragging) return;
         if (!this.ui.selectedTool||!this.ui.selectedTool.startsWith('belt')||!this.uiState.hoverTile) {
             if (this._beltGhostDrawn) {
                 const _bgc=document.getElementById('blueprint-canvas');
@@ -5130,6 +5132,7 @@ class Game {
     }
     setupInput() {
         let isPan=false,isBuild=false,lx=0,ly=0,panDist=0,dragPlaced=new Set(),lastDragTile=null;
+        this._isDragging=false;
         this.canvas.addEventListener('mousedown',e=>{
             if (e.button===2){
                 if (this.ui.selectedTool&&this.ui.selectedTool!=="delete") {
@@ -5196,7 +5199,7 @@ class Game {
                 } else {
                     if (!this.ui.selectedTool){isPan=true;lx=e.clientX;ly=e.clientY;panDist=0;}
                     else{
-                        isBuild=true;dragPlaced.clear();panDist=0;lx=e.clientX;ly=e.clientY;
+                        isBuild=true;this._isDragging=true;dragPlaced.clear();panDist=0;lx=e.clientX;ly=e.clientY;
                         if (e.shiftKey && this.ui.selectedTool && this.ui.selectedTool.startsWith('belt')) {
                             const _swx=Math.floor(((e.clientX/this.renderer.zoom)+this.renderer.camX)/Config.TILE_SIZE);
                             const _swy=Math.floor(((e.clientY/this.renderer.zoom)+this.renderer.camY)/Config.TILE_SIZE);
@@ -5300,7 +5303,7 @@ class Game {
                 const wy=(e.clientY/this.renderer.zoom)+this.renderer.camY;
                 this.interact(Math.floor(wx/Config.TILE_SIZE),Math.floor(wy/Config.TILE_SIZE));
             }
-            isPan=false; isBuild=false;
+            isPan=false; isBuild=false; this._isDragging=false;
             this._laneDir = -1; this._laneStart = null; this._laneLen = 0;
             this._shiftLineStart = null;
             const _lbc = document.getElementById('blueprint-canvas');
