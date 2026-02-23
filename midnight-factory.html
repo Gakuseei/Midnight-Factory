@@ -1138,27 +1138,37 @@ function tick(now) {
         firedMilestones.add('qc_3');
         postMessage({type:'milestone',text:'3 Quantum Cores sold. The lattice strengthens.',sfx:'milestone'});
     }
-    if (_quantumCoreCount>=5&&!firedMilestones.has('prestige_2')) {
+    if (_quantumCoreCount>=7&&!firedMilestones.has('prestige_2')) {
         firedMilestones.add('prestige_2'); state.unlockedTechs.add('prestige_2');
         postMessage({type:'milestone',text:'Transcendence I \u2014 Assembler +5% speed.',sfx:'quantum_core'});
     }
-    if (_quantumCoreCount>=10&&!firedMilestones.has('prestige_3')) {
+    if (_quantumCoreCount>=15&&!firedMilestones.has('prestige_3')) {
         firedMilestones.add('prestige_3'); state.unlockedTechs.add('prestige_3');
         postMessage({type:'milestone',text:'Singularity Loop \u2014 Labs generate 2x RP.',sfx:'quantum_core'});
     }
-    if (_quantumCoreCount>=25&&!firedMilestones.has('prestige_4')) {
+    if (_quantumCoreCount>=25&&!firedMilestones.has('qc_25')) {
+        firedMilestones.add('qc_25');
+        state.rp+=300;
+        postMessage({type:'milestone',text:'25 Quantum Cores \u2014 the lattice hums with power. (+300 RP)',sfx:'quantum_core'});
+    }
+    if (_quantumCoreCount>=35&&!firedMilestones.has('prestige_4')) {
         firedMilestones.add('prestige_4');
         postMessage({type:'milestone',text:'ASCENDANT',sfx:'quantum_core',qc:_quantumCoreCount});
     }
-    if (_singularityCount>=5&&!firedMilestones.has('sing_prestige_1')) {
+    if (_singularityCount>=7&&!firedMilestones.has('sing_prestige_1')) {
         firedMilestones.add('sing_prestige_1'); state.unlockedTechs.add('sing_prestige_1');
         postMessage({type:'milestone',text:'Singularity Prestige I \u2014 All sell values +15%.',sfx:'quantum_core'});
     }
-    if (_singularityCount>=15&&!firedMilestones.has('sing_prestige_2')) {
+    if (_singularityCount>=12&&!firedMilestones.has('ss_12')) {
+        firedMilestones.add('ss_12');
+        state.rp+=500;
+        postMessage({type:'milestone',text:'12 Singularity Shards \u2014 reality frays at the edges. (+500 RP)',sfx:'quantum_core'});
+    }
+    if (_singularityCount>=20&&!firedMilestones.has('sing_prestige_2')) {
         firedMilestones.add('sing_prestige_2'); state.unlockedTechs.add('sing_prestige_2');
         postMessage({type:'milestone',text:'Singularity Prestige II \u2014 Synthesizer +20% speed.',sfx:'quantum_core'});
     }
-    if (_singularityCount>=25&&!firedMilestones.has('sing_prestige_3')) {
+    if (_singularityCount>=35&&!firedMilestones.has('sing_prestige_3')) {
         firedMilestones.add('sing_prestige_3');
         postMessage({type:'milestone',text:'TRANSCENDENT FACTORY',sfx:'quantum_core',qc:_singularityCount});
     }
@@ -1710,7 +1720,7 @@ const Config = {
             {in:{quantum_core:1,titan_alloy:2},out:"quantum_lattice",time:8000}
         ],
         synthesizer: [
-            {in:{quantum_lattice:1,plasma_coil:2},out:"singularity_shard",time:15000}
+            {in:{quantum_lattice:1,plasma_coil:2},out:"singularity_shard",time:18000}
         ]
     },
     BUILD_COSTS: { mine:10, belt:2, belt2:10, belt3:30, furnace:25, assembler:150, lab:300, splitter:15, merger:15, seller:20, tunnel_in:20, tunnel_out:20, vein_miner:200, ore_synthesizer:800, synthesizer:2000 },
