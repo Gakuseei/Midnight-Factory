@@ -674,6 +674,13 @@ self.onmessage = function(e) {
                     }
             }
             generateMap(msg.seed);
+            // Migration: clear stale alloy from energy_cell assemblers (recipe changed to control_module + nano_chip)
+            for (var _mi = 0; _mi < state.activeBuildings.length; _mi++) {
+                var _mb = state.activeBuildings[_mi].b;
+                if (_mb.type === 'assembler' && _mb.lockedRecipe === 'energy_cell' && _mb.inventory && _mb.inventory.alloy) {
+                    _mb.inventory.alloy = 0;
+                }
+            }
             for (var _li = 0; _li < state.activeBuildings.length; _li++) {
                 var _lb = state.activeBuildings[_li].b;
                 if (_lb.type === 'assembler' && _lb.lockedRecipe) {
@@ -1661,6 +1668,8 @@ const Config = {
         circuit:{color:"#48c26b",value:80,rp:28}, nano_chip:{color:"#40c8e8",value:200,rp:60},
         processor:{color:"#9a48c2",value:360,rp:100}, energy_cell:{color:"#f0a820",value:650,rp:180},
         quantum_core:{color:"#d8b8f8",value:1500,rp:500},
+        reinforced_frame:{color:"#607890",value:55,rp:16},
+        control_module:{color:"#48a0b0",value:170,rp:50},
         refined_coal:{color:"#8a8aaa",value:12,rp:4},
         composite:{color:"#707088",value:55,rp:15},
         titanium_ore:{color:"#70a8b8",value:20,rp:8},
@@ -1690,8 +1699,10 @@ const Config = {
             {in:{iron_bar:1,copper_wire:2},out:"circuit",time:4000},
             {in:{silicon_wafer:1,copper_wire:1},out:"nano_chip",time:5000},
             {in:{circuit:2,gold_ingot:1},out:"processor",time:6000},
-            {in:{alloy:1,nano_chip:1},out:"energy_cell",time:8000},
-            {in:{processor:2,crystal:5},out:"quantum_core",time:10000},
+            {in:{alloy:1,copper_wire:2},out:"reinforced_frame",time:4500},
+            {in:{reinforced_frame:1,circuit:1,silicon_wafer:1},out:"control_module",time:6000},
+            {in:{control_module:1,nano_chip:1},out:"energy_cell",time:8000},
+            {in:{processor:2,crystal:5,control_module:1},out:"quantum_core",time:12000},
             {in:{brick:2,refined_coal:1},out:"composite",time:4000},
             {in:{refined_coal:1,brick:2},out:"alloy",time:2000},
             {in:{titanium_bar:2,steel:1},out:"titan_alloy",time:5000},
@@ -1804,6 +1815,7 @@ const ITEM_DOT_STYLES = {
     steel:         {cat:'bar', top:'#708898', mid:'#506070', bot:'#2a3a48', mk:'dot'},
     gold_ingot:    {cat:'bar', top:'#ffe860', mid:'#ffd700', bot:'#b89800', glow:true},
     alloy:         {cat:'bar', top:'#a8b0b8', mid:'#889098', bot:'#505860', mk:'diag'},
+    reinforced_frame: {cat:'bar', top:'#809ab0', mid:'#607890', bot:'#3a5068', mk:'hline'},
     silicon_wafer: {cat:'bar', top:'#e0f4ff', mid:'#c8e8ff', bot:'#88b0d8'},
     titanium_bar:  {cat:'bar', top:'#b0e0e0', mid:'#88c8c8', bot:'#508898', mk:'hline'},
     titan_alloy:   {cat:'bar', top:'#a0b0d8', mid:'#8090c0', bot:'#506090', mk:'diag2'},
@@ -1820,6 +1832,7 @@ const ITEM_DOT_STYLES = {
     // Hexagons — circuits/chips
     circuit:           {cat:'hex', top:'#70e090', mid:'#48c26b', bot:'#288848', glow:true},
     nano_chip:         {cat:'hex', top:'#70e0f8', mid:'#40c8e8', bot:'#2098b0', glow:true},
+    control_module:    {cat:'hex', top:'#70c0d0', mid:'#48a0b0', bot:'#287080', glow:true},
     processor:         {cat:'hex', top:'#c070e0', mid:'#9a48c2', bot:'#6a2890', glow:true},
     quantum_core:      {cat:'hex', top:'#eed0ff', mid:'#d8b8f8', bot:'#a880d0', glow:true},
     quantum_lattice:   {cat:'hex', top:'#c8d8ff', mid:'#a8c0f0', bot:'#7088c0', glow:true},
@@ -2422,7 +2435,7 @@ class Renderer {
                         ctx.arc(_pts[_j*2]-_bw*0.18,_pts[_j*2+1]-_bh*0.15,1.2,0,Math.PI*2);
                     }
                     ctx.fill();
-                } else if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy') {
+                } else if (_type.includes('bar')||_type==='steel'||_type==='gold_ingot'||_type==='alloy'||_type==='silicon_wafer'||_type==='titan_alloy'||_type==='reinforced_frame') {
                     // Bars / ingots: gradient + shadow + outline + specular (per-type palette)
                     const _barPalette={
                         iron_bar:{top:'#d0ddf0',bot:'#7088a8',out:'rgba(80,100,140,0.7)',spec:'rgba(220,235,255,0.5)'},
@@ -2431,7 +2444,8 @@ class Renderer {
                         alloy:{top:'#a8b0b8',bot:'#505860',out:'rgba(55,60,68,0.7)',spec:'rgba(195,200,210,0.45)'},
                         silicon_wafer:{top:'#e0f4ff',bot:'#88b0d8',out:'rgba(100,140,180,0.6)',spec:'rgba(240,250,255,0.5)'},
                         titanium_bar:{top:'#b0e0e0',bot:'#508898',out:'rgba(50,110,130,0.65)',spec:'rgba(190,240,240,0.5)'},
-                        titan_alloy:{top:'#a0b0d8',bot:'#506090',out:'rgba(50,60,110,0.65)',spec:'rgba(180,195,230,0.5)'}
+                        titan_alloy:{top:'#a0b0d8',bot:'#506090',out:'rgba(50,60,110,0.65)',spec:'rgba(180,195,230,0.5)'},
+                        reinforced_frame:{top:'#809ab0',bot:'#3a5068',out:'rgba(50,70,100,0.65)',spec:'rgba(170,195,220,0.45)'}
                     };
                     const _bp=_barPalette[_type]||{top:'#ccc',bot:'#666',out:'rgba(80,80,80,0.7)',spec:'rgba(255,255,255,0.4)'};
                     const _bw=T*0.4,_bh=T*0.2;
@@ -2464,7 +2478,7 @@ class Renderer {
                         ctx.arc(_pts[_j*2]-_bw*0.18,_pts[_j*2+1]-_bh*0.15,1.2,0,Math.PI*2);
                     }
                     ctx.fill();
-                } else if (_type==='circuit'||_type==='processor'||_type==='quantum_core'||_type==='nano_chip'||_type==='quantum_lattice'||_type==='singularity_shard') {
+                } else if (_type==='circuit'||_type==='processor'||_type==='quantum_core'||_type==='nano_chip'||_type==='quantum_lattice'||_type==='singularity_shard'||_type==='control_module') {
                     // Hexagons with glow (rare/valuable — shadow cost is bounded)
                     const _r=T*0.25;
                     ctx.shadowColor=_col; ctx.shadowBlur=10;
