@@ -5134,7 +5134,7 @@ class Game {
                 if (msg.text==='TRANSCENDENT FACTORY') {
                     this.showToast('Beyond singularity. The factory transcends.', 'gold', 5000);
                     this.showMilestoneFlash();
-                    setTimeout(()=>this.showTranscendentScreen(msg.qc||10),1800);
+                    setTimeout(()=>this.showTranscendentScreen(msg.qc||35),1800);
                 }
                 if (msg.text.includes('transcended')) setTimeout(()=>this.showEndScreen(),1800);
             } else if (msg.type==='rp_gain') {
