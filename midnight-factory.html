@@ -290,6 +290,7 @@ kbd.shortcut-key {
     <div id="btn-speed-05" class="speed-btn" title="Half Speed"   style="cursor:pointer;padding:4px 8px;font-size:14px;border-radius:12px;color:var(--text-dim);">½</div>
     <div id="btn-speed-1"  class="speed-btn" title="Normal Speed" style="cursor:pointer;padding:4px 8px;font-size:14px;border-radius:12px;color:var(--text-active);background:rgba(91,106,175,0.4);">▶</div>
     <div id="btn-speed-2"  class="speed-btn" title="Double Speed" style="cursor:pointer;padding:4px 8px;font-size:14px;border-radius:12px;color:var(--text-dim);">×2</div>
+    <div id="btn-speed-4"  class="speed-btn" title="Quad Speed" style="cursor:pointer;padding:4px 8px;font-size:14px;border-radius:12px;color:var(--text-dim);display:none;">×4</div>
   </div>
   <div id="music-wrapper">
     <div id="music-btn" class="circle-btn" title="Toggle Music (hover for volume)">
@@ -4363,10 +4364,11 @@ class UI {
             reader.readAsText(file);
             e.target.value='';
         };
-        const _speedBtnIds=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2'];
+        const _speedBtnIds=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2','btn-speed-4'];
         for (let _si=0;_si<_speedBtnIds.length;_si++) {
             const _idx=_si;
             document.getElementById(_speedBtnIds[_si]).onclick=()=>{
+                if (_idx===4 && !this.main._speed4xUnlocked) return;
                 this.main._speedIdx=_idx;
                 this.main._applySpeed();
             };
@@ -4766,7 +4768,7 @@ class Game {
         this._prevSellerTotals = {};
         this._prevSellTotal = 0;
         this._lastQuantumAssemblerPos = null;
-        this._speedSteps=[0,0.5,1,2]; this._speedIdx=2;
+        this._speedSteps=[0,0.5,1,2,4]; this._speedIdx=2; this._speed4xUnlocked=false;
         this.state={map:[],buildings:[],itemsBuf:null,itemCount:0,money:200,rp:0,quantumCoreCount:0,singularityCount:0};
         this.uiState={hoverTile:null,selectedTool:null,rotation:1,skillTreeOpen:false,placeFailTile:null};
         this.spawnX=null; this.spawnY=null;
@@ -4792,7 +4794,12 @@ class Game {
 
         const saved=localStorage.getItem('mf_save_'+this.seed);
         this._lastSaveData = null;
-        this.worker.postMessage({type:'init',seed:this.seed,save:saved?JSON.parse(saved):null});
+        const _parsedSave=saved?JSON.parse(saved):null;
+        if (_parsedSave&&_parsedSave.firedMilestones&&_parsedSave.firedMilestones.indexOf('prestige_4')!==-1) {
+            this._speed4xUnlocked=true;
+            document.getElementById('btn-speed-4').style.display='';
+        }
+        this.worker.postMessage({type:'init',seed:this.seed,save:_parsedSave});
         this.setupWorker(); this.setupInput();
 
         // Sync save on page hide / close (covers F5, tab close, navigate away)
@@ -5113,7 +5120,10 @@ class Game {
                 if (msg.text==='ASCENDANT') {
                     this.showToast('You have built the impossible. The factory ascends.', 'gold', 5000);
                     this.showMilestoneFlash();
-                    setTimeout(()=>this.showAscendantScreen(msg.qc||25),1800);
+                    this._speed4xUnlocked=true;
+                    document.getElementById('btn-speed-4').style.display='';
+                    this.showToast('4x Speed unlocked!','rgba(91,170,106,0.9)',3000);
+                    setTimeout(()=>this.showAscendantScreen(msg.qc||35),1800);
                 } else {
                     this.showToast(msg.text, 'gold');
                     if (msg.text.includes('MAGNATE') || msg.text.includes('transcended') || msg.text.includes('5,000,000')
@@ -5481,7 +5491,7 @@ class Game {
                 this.showToast(this.uiState.debugHeatmap ? 'Heatmap ON' : 'Heatmap OFF', null, 1500);
             }
             else if (e.key==='[') { this._speedIdx=Math.max(0,this._speedIdx-1); this._applySpeed(); }
-            else if (e.key===']') { this._speedIdx=Math.min(this._speedSteps.length-1,this._speedIdx+1); this._applySpeed(); }
+            else if (e.key===']') { this._speedIdx=Math.min(this._speed4xUnlocked?this._speedSteps.length-1:3,this._speedIdx+1); this._applySpeed(); }
             else if (e.key==='?') document.getElementById('shortcuts-overlay').classList.toggle('active');
             else if (e.key>='1'&&e.key<='9'){
                 const tools=["mine","belt","furnace","seller","splitter","merger","belt2","belt3","assembler","lab"];
@@ -5514,11 +5524,11 @@ class Game {
     _applySpeed(){
         const mult=this._speedSteps[this._speedIdx];
         this.worker.postMessage({type:'speed',mult});
-        const ids=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2'];
+        const ids=['btn-speed-0','btn-speed-05','btn-speed-1','btn-speed-2','btn-speed-4'];
         document.querySelectorAll('.speed-btn').forEach(b=>{b.style.color='var(--text-dim)';b.style.background='transparent';});
         const b=document.getElementById(ids[this._speedIdx]);
         if(b){b.style.color='var(--text-active)';b.style.background='rgba(91,106,175,0.4)';}
-        const labels=['\u23f8 Paused','\u00bd Speed','\u25b6 Normal','\u00d72 Speed'];
+        const labels=['\u23f8 Paused','\u00bd Speed','\u25b6 Normal','\u00d72 Speed','\u00d74 Speed'];
         this.showToast(labels[this._speedIdx],null,1200);
     }
     hideBuildingInfo() {
